@@ -1,0 +1,9 @@
+swTest read X {
+	switch X {
+		case 3: Y:=3
+		case 4: Y:=4
+		case doFor: Y:=1000
+		default: Y := 137
+	}
+}
+write Y

@@ -1,0 +1,6 @@
+// simple program that adds 1 to the input
+
+prog read X {
+  Y := cons nil X
+} write Y
+

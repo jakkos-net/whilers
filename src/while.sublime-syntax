@@ -1,0 +1,49 @@
+
+name: while
+file_extensions:
+  - while
+scope: source.while
+
+contexts:
+  main:
+    - match: '//'
+      scope: punctuation.definition.comment.while
+      push:
+        - meta_scope: comment.line.while
+        - match: $\n?
+          pop: true           
+    - match: \(\*
+      push:
+        - meta_scope: comment.block.while
+        - match: \*\)
+          pop: true    
+    - match: ';'
+      scope: punctuation.terminator.while
+    - match: ':='
+      scope: keyword.operator.assignment.while
+    - match: 'while|if|else|switch|case|default'
+      scope: keyword.control.while
+    - match: '[0-9]+'
+      scope: constant.numeric.integer.decimal.while
+    - match: 'nil'
+      scope: constant.other.while
+    - match: 'cons|hd|tail'
+      scope: keyword.operator.while
+    - match: 'true|false'
+      scope: constant.language.while
+    - match: 'read|write'
+      scope: keyword.control.while
+    - match: '[@]\w*\b'
+      scope: keyword.control.while
+    - match: '(@:=)'
+      scope: keyword.control.while
+    - match: '[A-Za-z]+'
+      scope: variable.parameter.while
+    - match: '{'
+      scope: punctuation.section.block.begin.while
+    - match: '}'
+      scope: punctuation.section.block.begin.while
+    - match: '\['
+      scope: punctuation.section.brackets.begin.while
+    - match: '\]'
+      scope: punctuation.section.brackets.end.while

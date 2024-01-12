@@ -1,0 +1,10 @@
+// adds two input numbers together
+
+add read XY {
+    X := hd XY;
+    Y := hd tl XY;
+    while X {
+        Y := cons nil Y;
+        X := tl X
+    }
+} write Y
