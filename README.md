@@ -6,6 +6,6 @@ An online editor and interpreter for the While language.
 
 ## Building
 
-First [install Rust](https://www.rust-lang.org/learn/get-started)
-
-Then run: `cargo run --release`
+- [Install Rust](https://www.rust-lang.org/learn/get-started)
+- Clone the repo
+- Run `cargo run --release`
