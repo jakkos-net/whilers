@@ -199,6 +199,16 @@ impl Varnums {
     pub fn get(&self, var: &VarName) -> usize {
         *self.0.get(var).unwrap()
     }
+
+    pub fn issue_name(&mut self, desired_name: &VarName) -> VarName {
+        if self.0.contains_key(desired_name) {
+            let alternative_name = VarName(format!("{desired_name}'"));
+            self.issue_name(&alternative_name)
+        } else {
+            self.try_add(desired_name);
+            desired_name.clone()
+        }
+    }
 }
 
 pub fn unparse_block(block: &Block, varnums: &Varnums) -> String {

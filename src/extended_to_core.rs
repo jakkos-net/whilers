@@ -1,6 +1,12 @@
 // This module contains functionality for converting Extended While programs into Core While programs.
 
-use crate::parser::{Block, Expression, Prog, Statement};
+use anyhow::Context;
+use indexmap::{IndexMap, IndexSet};
+
+use crate::{
+    output::Varnums,
+    parser::{Block, Expression, Prog, ProgName, Statement, VarName},
+};
 
 // Converting numbers, lists, and switch statements to core while is straight forward
 
@@ -51,9 +57,119 @@ pub fn switch_to_ifs(
 }
 
 // macros are slightly more annoying as we have to replace all the conflicting variable names
+pub fn macros_to_core(
+    main_prog: &Prog,
+    main_prog_name: &ProgName,
+    progs: &IndexMap<ProgName, Prog>,
+) -> anyhow::Result<Prog> {
+    let mut used_progs: IndexSet<ProgName> = Default::default();
+    used_progs.insert(main_prog_name.clone());
 
-pub fn macros_to_core(_prog: &Prog) -> anyhow::Result<Prog> {
+    let mut main_prog = main_prog.clone();
+    let used_vars = Varnums::new(&main_prog);
+
+    // while there are still macros
+    // get used varnames in prog
+    // find a macro
+
+    // replace macro with:
+    //   assign(mapped_input_var, mapped_input_expr)
+    //   rest of program block
+
     todo!()
+}
+
+fn replace_vars_in_block(
+    block: &Block,
+    mapping: &IndexMap<VarName, VarName>,
+) -> anyhow::Result<Block> {
+    let new_stmts: Vec<_> = block
+        .0
+        .iter()
+        .map(|stmt| {
+            use Statement as S;
+            Ok(match stmt {
+                S::Assign(var, expr) => S::Assign(
+                    replace_var(var, mapping)?,
+                    replace_vars_in_expr(&expr, mapping)?,
+                ),
+                S::While { cond, body } => S::While {
+                    cond: replace_vars_in_expr(cond, mapping)?,
+                    body: replace_vars_in_block(block, mapping)?,
+                },
+                S::If { cond, then, or } => S::If {
+                    cond: replace_vars_in_expr(cond, mapping)?,
+                    then: replace_vars_in_block(then, mapping)?,
+                    or: replace_vars_in_block(or, mapping)?,
+                },
+                S::Macro {
+                    var,
+                    prog_name,
+                    input_expr,
+                } => S::Macro {
+                    var: replace_var(var, mapping)?,
+                    prog_name: prog_name.clone(),
+                    input_expr: replace_vars_in_expr(input_expr, mapping)?,
+                },
+                S::Switch {
+                    cond,
+                    cases,
+                    default,
+                } => S::Switch {
+                    cond: replace_vars_in_expr(cond, mapping)?,
+                    cases: cases
+                        .into_iter()
+                        .map(|(expr, block)| {
+                            Ok((
+                                replace_vars_in_expr(expr, mapping)?,
+                                replace_vars_in_block(block, mapping)?,
+                            ))
+                        })
+                        .collect()?,
+                    default: replace_vars_in_block(default, mapping)?,
+                },
+            })
+        })
+        .collect()?;
+    Ok(Block(new_stmts))
+}
+
+fn replace_vars_in_expr(
+    expr: &Expression,
+    mapping: &IndexMap<VarName, VarName>,
+) -> anyhow::Result<Expression> {
+    use Expression as E;
+    Ok(match expr {
+        E::Cons(e1, e2) => E::Cons(
+            Box::new(replace_vars_in_expr(e1, mapping)?),
+            Box::new(replace_vars_in_expr(e2, mapping)?),
+        ),
+        E::Hd(e) => E::Hd(Box::new(replace_vars_in_expr(e, mapping)?)),
+        E::Tl(e) => E::Tl(Box::new(replace_vars_in_expr(e, mapping)?)),
+        E::Nil => E::Nil,
+        E::Var(var) => E::Var(replace_var(var, mapping)?),
+        E::Num(n) => E::Num(*n),
+        E::Bool(b) => E::Bool(*b),
+        E::List(list) => E::List(
+            list.into_iter()
+                .map(|e| Ok(replace_vars_in_expr(e, mapping)?))
+                .collect()?,
+        ),
+        E::Eq(e1, e2) => E::Eq(
+            Box::new(replace_vars_in_expr(e1, mapping)?),
+            Box::new(replace_vars_in_expr(e2, mapping)?),
+        ),
+    })
+}
+
+fn replace_var(
+    var_name: &VarName,
+    mapping: &IndexMap<VarName, VarName>,
+) -> anyhow::Result<VarName> {
+    mapping
+        .get(var_name)
+        .map(|x| x.to_owned())
+        .with_context(|| format!("Var name '{var_name}' did not exist in replacements map!"))
 }
 
 // equals is the worst case, as the equals expression has to be replaced with a new expression... and entirely new statement has to be added! Nested equals get particularly head-scratching to work out.

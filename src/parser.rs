@@ -123,7 +123,7 @@ impl Display for Expression {
     }
 }
 #[derive(Debug, PartialEq, Eq, Clone, std::hash::Hash)]
-pub struct VarName(String);
+pub struct VarName(pub String);
 
 impl Display for VarName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
