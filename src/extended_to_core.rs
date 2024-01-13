@@ -83,7 +83,7 @@ fn replace_vars_in_block(
     block: &Block,
     mapping: &IndexMap<VarName, VarName>,
 ) -> anyhow::Result<Block> {
-    let new_stmts: Vec<_> = block
+    let new_stmts = block
         .0
         .iter()
         .map(|stmt| {
@@ -125,12 +125,12 @@ fn replace_vars_in_block(
                                 replace_vars_in_block(block, mapping)?,
                             ))
                         })
-                        .collect()?,
+                        .collect::<anyhow::Result<_>>()?,
                     default: replace_vars_in_block(default, mapping)?,
                 },
             })
         })
-        .collect()?;
+        .collect::<anyhow::Result<_>>()?;
     Ok(Block(new_stmts))
 }
 
@@ -153,7 +153,7 @@ fn replace_vars_in_expr(
         E::List(list) => E::List(
             list.into_iter()
                 .map(|e| Ok(replace_vars_in_expr(e, mapping)?))
-                .collect()?,
+                .collect::<anyhow::Result<_>>()?,
         ),
         E::Eq(e1, e2) => E::Eq(
             Box::new(replace_vars_in_expr(e1, mapping)?),
