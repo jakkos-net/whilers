@@ -2,7 +2,7 @@
 
 An online editor and interpreter for the While language.
 
-[Click here to use the live version!](https://jakkos.net/while-rs)
+[Click here to use the live web version!](https://jakkos.net/whilers)
 
 ## Building
 
