@@ -11,6 +11,7 @@ use nom::{
         complete::{alpha1, alphanumeric1, digit1, multispace1},
     },
     combinator::{eof, map, map_res, opt, recognize},
+    error::{convert_error, VerboseError},
     multi::{many0_count, separated_list0, separated_list1},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult,
@@ -201,11 +202,17 @@ pub fn parse(s: &str) -> anyhow::Result<Prog> {
     let s = remove_comments(s);
     match prog(&s) {
         Ok((_, prog)) => Ok(prog),
-        Err(e) => bail!("failed to parse program:\n{:?}", e),
+        Err(e) => match e {
+            nom::Err::Error(e) | nom::Err::Failure(e) => {
+                let e = convert_error(s.as_str(), e);
+                bail!("failed to parse program:\n{e}")
+            }
+            _ => bail!("Unknown error!"),
+        },
     }
 }
 
-fn prog(s: &str) -> IResult<&str, Prog> {
+fn prog(s: &str) -> IResult<&str, Prog, VerboseError<&str>> {
     map(
         tuple((
             delimited(
@@ -248,26 +255,26 @@ pub fn remove_comments(s: &str) -> String {
     let single_line = Regex::new(r"//.*").unwrap();
     let multi_line = Regex::new(r"\(\*(.|\n)*?\*\)").unwrap();
     multi_line
-        .replace_all(&single_line.replace_all(s, ""), "")
+        .replace_all(&single_line.replace_all(s, "\n"), "")
         .to_string()
 }
 
-pub fn name(s: &str) -> IResult<&str, &str> {
+pub fn name(s: &str) -> IResult<&str, &str, VerboseError<&str>> {
     recognize(pair(
         alt((alpha1, tag("_"))),
         many0_count(alt((alphanumeric1, tag("_")))),
     ))(s)
 }
 
-pub fn prog_name(s: &str) -> IResult<&str, ProgName> {
+pub fn prog_name(s: &str) -> IResult<&str, ProgName, VerboseError<&str>> {
     name(s).map(|(s, name)| (s, ProgName(name.into())))
 }
 
-pub fn var_name(s: &str) -> IResult<&str, VarName> {
+pub fn var_name(s: &str) -> IResult<&str, VarName, VerboseError<&str>> {
     name(s).map(|(s, name)| (s, VarName(name.into())))
 }
 
-pub fn block(s: &str) -> IResult<&str, Block> {
+pub fn block(s: &str) -> IResult<&str, Block, VerboseError<&str>> {
     map(
         delimited(
             delimited(multispace0, tag("{"), multispace0),
@@ -278,7 +285,7 @@ pub fn block(s: &str) -> IResult<&str, Block> {
     )(s)
 }
 
-pub fn statement(s: &str) -> IResult<&str, Statement> {
+pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     alt((
         // Assignment
         map(
@@ -384,22 +391,22 @@ pub fn statement(s: &str) -> IResult<&str, Statement> {
 // this would lead to an infinite loop.
 // So we break up the expression into expression and not_equals_expression
 // and define equals as EXPR -> NOT_EQUALS_EXPR = EXPR
-pub fn expression(s: &str) -> IResult<&str, Expression> {
+pub fn expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     alt((
         // Equals
         map(
             separated_pair(
-                not_equals_expression,
+                non_equality_expression,
                 delimited(multispace0, tag("="), multispace0),
                 expression,
             ),
             |(e1, e2)| Expression::Eq(Box::new(e1), Box::new(e2)),
         ),
-        not_equals_expression,
+        non_equality_expression,
     ))(s)
 }
 
-pub fn not_equals_expression(s: &str) -> IResult<&str, Expression> {
+pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     alt((
         // Hd
         map(preceded(pair(tag("hd"), multispace1), expression), |e| {
