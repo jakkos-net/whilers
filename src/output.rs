@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 
 use crate::{
     atoms::Atom,
-    interpret::{interpret, Store},
+    interpret::{interpret, ExecState},
     parser::{Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
 };
 
@@ -106,19 +106,14 @@ pub fn generate_output(
 
 fn generate_output_with_debug(
     output_tree: &NilTree,
-    store: &Store,
+    store: &ExecState,
     debug: bool,
     f: impl Fn(&NilTree) -> String,
 ) -> Output {
     let mut res = vec![];
     if debug {
         for (prog_name, var, val) in store.get_history() {
-            let prog_name_string = prog_name
-                .as_ref()
-                .map(|x| format!("({x})",))
-                .unwrap_or("(NONE)".into());
-
-            res.push(format!("{} {} = {}", prog_name_string, var, f(val)));
+            res.push(format!("{prog_name} {var} = {}", f(val)));
         }
         res.push("".into());
     }
