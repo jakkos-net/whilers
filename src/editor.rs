@@ -65,20 +65,24 @@ impl Default for EditorState {
 
 pub fn ui(ctx: &Context, state: &mut EditorState) {
     CentralPanel::default().show(ctx, |ui| {
-        code_tabs_ui(ctx, ui, state);
+        ScrollArea::vertical()
+            .id_source("top level scroll")
+            .show(ui, |ui| {
+                code_tabs_ui(ctx, ui, state);
 
-        ui.separator();
+                ui.separator();
 
-        input_ui(ui, state);
+                input_ui(ui, state);
 
-        run_ui(ui, state);
+                run_ui(ui, state);
 
-        output_ui(ui, state);
+                output_ui(ui, state);
 
-        if ui.small_button("Reset").clicked() {
-            *state = EditorState::default();
-            ctx.memory_mut(|m| *m = Default::default());
-        }
+                if ui.small_button("Reset").clicked() {
+                    *state = EditorState::default();
+                    ctx.memory_mut(|m| *m = Default::default());
+                }
+            });
     });
 }
 
@@ -101,7 +105,6 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
     ui.heading("Code");
 
     import_files_ui(ctx, ui, state);
-
     ScrollArea::horizontal()
         .id_source("code tabs")
         .show(ui, |ui| {

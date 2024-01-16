@@ -132,7 +132,7 @@ impl Display for VarName {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, std::hash::Hash)]
-pub struct ProgName(String);
+pub struct ProgName(pub String);
 
 impl Display for ProgName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
