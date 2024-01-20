@@ -12,7 +12,7 @@ use nom::{
     },
     combinator::{eof, map, map_res, opt, recognize},
     error::{convert_error, VerboseError},
-    multi::{many0_count, separated_list0, separated_list1},
+    multi::{many0_count, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult,
 };
@@ -23,7 +23,7 @@ use crate::{
     extended_to_core::{list_to_core, num_to_core},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Prog {
     pub prog_name: ProgName,
     pub input_var: VarName,

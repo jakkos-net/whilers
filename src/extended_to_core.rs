@@ -3,10 +3,7 @@
 use anyhow::Context;
 use indexmap::{IndexMap, IndexSet};
 
-use crate::{
-    output::Varnums,
-    parser::{Block, Expression, Prog, ProgName, Statement, VarName},
-};
+use crate::parser::{Block, Expression, Prog, ProgName, Statement, VarName};
 
 // Converting numbers, lists, and switch statements to core while is straight forward
 
@@ -65,8 +62,8 @@ pub fn macros_to_core(
     let mut used_progs: IndexSet<ProgName> = Default::default();
     used_progs.insert(main_prog_name.clone());
 
-    let mut main_prog = main_prog.clone();
-    let used_vars = Varnums::new(&main_prog);
+    // let mut main_prog = main_prog.clone();
+    // let used_vars = Varnums::new(&main_prog);
 
     // while there are still macros
     // get used varnames in prog
