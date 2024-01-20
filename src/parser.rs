@@ -278,10 +278,17 @@ pub fn block(s: &str) -> IResult<&str, Block, VerboseError<&str>> {
     map(
         delimited(
             delimited(multispace0, tag("{"), multispace0),
-            separated_list0(tag(";"), delimited(multispace0, statement, multispace0)),
+            statement_list,
             delimited(multispace0, tag("}"), multispace0),
         ),
         Block,
+    )(s)
+}
+
+pub fn statement_list(s: &str) -> IResult<&str, Vec<Statement>, VerboseError<&str>> {
+    separated_list0(
+        delimited(multispace0, tag(";"), multispace0),
+        preceded(multispace0, statement),
     )(s)
 }
 
@@ -333,7 +340,7 @@ pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
                         pair(tag("{"), multispace0),
                         pair(
                             // list of cases
-                            separated_list1(
+                            separated_list0(
                                 multispace1,
                                 pair(
                                     delimited(
@@ -341,17 +348,13 @@ pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
                                         delimited(multispace1, expression, multispace0),
                                         tag(":"),
                                     ),
-                                    preceded(multispace0, separated_list1(tag(";"), statement)),
+                                    statement_list,
                                 ),
                             ),
                             // an optional default
                             opt(preceded(
                                 tuple((multispace1, tag("default"), multispace0, tag(":"))),
-                                delimited(
-                                    multispace0,
-                                    separated_list1(tag(";"), statement),
-                                    multispace0,
-                                ),
+                                statement_list,
                             )),
                         ),
                         pair(multispace0, tag("}")),
