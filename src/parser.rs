@@ -502,14 +502,14 @@ mod tests {
     }
 
     #[test]
-    fn test_switch() {
-        let s = include_str!("../programs/swTest.while");
+    fn test_switch1() {
+        let s = include_str!("../programs/switch1.while");
         let prog = parse(s).unwrap();
 
         assert_eq!(
             prog,
             Prog {
-                prog_name: ProgName("swTest".into()),
+                prog_name: ProgName("switch1".into()),
                 input_var: VarName("X".into()),
                 body: Block(vec![Switch {
                     cond: Var(VarName("X".into())),
@@ -519,6 +519,42 @@ mod tests {
                         (
                             Var(VarName("doFor".into())),
                             Block(vec![Assign(VarName("Y".into()), Num(1000))])
+                        )
+                    ],
+                    default: Block(vec![])
+                }]),
+                output_var: VarName("Y".into())
+            }
+        )
+    }
+
+    #[test]
+    fn test_switch2() {
+        let s = include_str!("../programs/switch2.while");
+        let prog = parse(s).unwrap();
+
+        assert_eq!(
+            prog,
+            Prog {
+                prog_name: ProgName("switch2".into()),
+                input_var: VarName("X".into()),
+                body: Block(vec![Switch {
+                    cond: Var(VarName("X".into())),
+                    cases: vec![
+                        (Num(3), Block(vec![Assign(VarName("Y".into()), Num(3))])),
+                        (
+                            Num(4),
+                            Block(vec![
+                                Assign(VarName("Y".into()), Num(4)),
+                                Assign(VarName("Z".into()), Num(5))
+                            ])
+                        ),
+                        (
+                            Var(VarName("doFor".into())),
+                            Block(vec![
+                                Assign(VarName("Y".into()), Num(1000)),
+                                Assign(VarName("Z".into()), Num(7))
+                            ])
                         )
                     ],
                     default: Block(vec![Assign(VarName("Y".into()), Num(137))])

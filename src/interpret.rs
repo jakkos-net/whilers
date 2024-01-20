@@ -226,8 +226,30 @@ mod tests {
     }
 
     #[test]
-    pub fn test_switch() {
-        let prog = parse(include_str!("../programs/swTest.while")).unwrap();
+    pub fn test_switch1() {
+        let prog = parse(include_str!("../programs/switch1.while")).unwrap();
+
+        let progs = Default::default();
+
+        let empty_store = ExecState::new(&ProgName("testing".into()));
+
+        assert_eq!(
+            interpret(&prog, &input("3").unwrap(), &progs).unwrap().0,
+            eval(&expression("3").unwrap().1, &empty_store)
+        );
+        assert_eq!(
+            interpret(&prog, &input("4").unwrap(), &progs).unwrap().0,
+            eval(&expression("4").unwrap().1, &empty_store)
+        );
+        assert_eq!(
+            interpret(&prog, &input("0").unwrap(), &progs).unwrap().0,
+            eval(&expression("1000").unwrap().1, &empty_store)
+        );
+    }
+
+    #[test]
+    pub fn test_switch2() {
+        let prog = parse(include_str!("../programs/switch2.while")).unwrap();
 
         let progs = Default::default();
 
