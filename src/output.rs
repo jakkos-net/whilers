@@ -1,9 +1,9 @@
 // This module contains functions for generating output strings (e.g. nil trees, encodings of nil trees, programs-as-data etc.)
 
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
 
 use anyhow::bail;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     atoms::Atom,
@@ -123,7 +123,7 @@ fn generate_output_with_debug(
 }
 
 pub fn unparse_prog(prog: &Prog) -> String {
-    let varnums = Varnums::new(prog);
+    let varnums = Variables::new(prog);
     format!(
         "[{},\n\t{},\n{}]",
         varnums.get(&prog.input_var),
@@ -132,21 +132,22 @@ pub fn unparse_prog(prog: &Prog) -> String {
     )
 }
 
-pub struct Varnums(HashMap<VarName, usize>);
+pub struct Variables(IndexSet<VarName>);
 
-impl Varnums {
+impl Variables {
     pub fn new(prog: &Prog) -> Self {
-        let mut varnums = Self(Default::default());
-        varnums.try_add(&prog.input_var);
-        Self::block(&prog.body, &mut varnums);
-        varnums
+        let mut vars = Self(Default::default());
+        vars.add(&prog.input_var);
+        Self::block(&prog.body, &mut vars);
+        vars.add(&prog.output_var);
+        vars
     }
 
     fn block(block: &Block, varnums: &mut Self) {
         for stmt in &block.0 {
             match stmt {
                 Statement::Assign(var, expr) => {
-                    varnums.try_add(var);
+                    varnums.add(var);
                     Self::expr(expr, varnums);
                 }
                 Statement::While { cond, body } => {
@@ -180,33 +181,37 @@ impl Varnums {
             }
             Expression::Hd(e) => Self::expr(e, varnums),
             Expression::Tl(e) => Self::expr(e, varnums),
-            Expression::Var(var) => varnums.try_add(var),
+            Expression::Var(var) => varnums.add(var),
             _ => (),
         }
     }
 
-    pub fn try_add(&mut self, var: &VarName) {
-        if !self.0.contains_key(var) {
-            self.0.insert(var.clone(), self.0.len());
+    pub fn add(&mut self, var: &VarName) {
+        if !self.0.contains(var) {
+            self.0.insert(var.clone());
         }
     }
 
     pub fn get(&self, var: &VarName) -> usize {
-        *self.0.get(var).unwrap()
+        self.0.get_index_of(var).unwrap()
     }
 
     pub fn issue_name(&mut self, desired_name: &VarName) -> VarName {
-        if self.0.contains_key(desired_name) {
+        if self.0.contains(desired_name) {
             let alternative_name = VarName(format!("{desired_name}'"));
             self.issue_name(&alternative_name)
         } else {
-            self.try_add(desired_name);
+            self.add(desired_name);
             desired_name.clone()
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &VarName> {
+        self.0.iter()
+    }
 }
 
-pub fn unparse_block(block: &Block, varnums: &Varnums) -> String {
+pub fn unparse_block(block: &Block, varnums: &Variables) -> String {
     format!(
         "[\n\t{}\n]",
         block
@@ -218,7 +223,7 @@ pub fn unparse_block(block: &Block, varnums: &Varnums) -> String {
     )
 }
 
-pub fn unparse_stmt(stmt: &Statement, varnums: &Varnums) -> String {
+pub fn unparse_stmt(stmt: &Statement, varnums: &Variables) -> String {
     format!(
         "[{}]",
         match stmt {
@@ -240,7 +245,7 @@ pub fn unparse_stmt(stmt: &Statement, varnums: &Varnums) -> String {
     )
 }
 
-pub fn unparse_expr(expr: &Expression, varnums: &Varnums) -> String {
+pub fn unparse_expr(expr: &Expression, varnums: &Variables) -> String {
     format!(
         "[{}]",
         match expr {

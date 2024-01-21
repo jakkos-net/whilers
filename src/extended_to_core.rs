@@ -3,7 +3,10 @@
 use anyhow::Context;
 use indexmap::{IndexMap, IndexSet};
 
-use crate::parser::{Block, Expression, Prog, ProgName, Statement, VarName};
+use crate::{
+    output::Variables,
+    parser::{Block, Expression, Prog, ProgName, Statement, VarName},
+};
 
 // Converting numbers, lists, and switch statements to core while is straight forward
 
@@ -74,6 +77,77 @@ pub fn macros_to_core(
     //   rest of program block
 
     todo!()
+}
+
+fn replace_macro_in_block(
+    block: &Block,
+    progs: &IndexMap<ProgName, Prog>,
+) -> anyhow::Result<Block> {
+    fn inner(
+        block: &Block,
+        progs: &IndexMap<ProgName, Prog>,
+        done: &mut bool,
+    ) -> anyhow::Result<Block> {
+        // we only want to replace one macro at a time
+        if *done {
+            return Ok(block.clone());
+        }
+
+        let mut stmt_list = vec![];
+
+        for stmt in &block.0 {
+            use Statement as S;
+            match stmt {
+                S::Assign(_, _) => stmt_list.push(stmt.clone()),
+                Statement::While { cond, body } => stmt_list.push(S::While {
+                    cond: cond.clone(),
+                    body: inner(body, progs, done)?,
+                }),
+                Statement::If { cond, then, or } => stmt_list.push(S::If {
+                    cond: cond.clone(),
+                    then: inner(then, progs, done)?,
+                    or: inner(or, progs, done)?,
+                }),
+                Statement::Switch {
+                    cond,
+                    cases,
+                    default,
+                } => stmt_list.push(S::Switch {
+                    cond: cond.clone(),
+                    cases: cases
+                        .into_iter()
+                        .map(|(cond, block)| Ok((cond.clone(), inner(block, progs, done)?)))
+                        .collect::<anyhow::Result<_>>()?,
+                    default: inner(default, progs, done)?,
+                }),
+                Statement::Macro {
+                    var,
+                    prog_name,
+                    input_expr,
+                } => {
+                    *done = true;
+
+                    let macro_prog = progs.get(prog_name).with_context(|| format!("Tried to convert macro call to '{prog_name}' to core while, but this program does not exist!"))?;
+                    let vars = Variables::new(macro_prog);
+                    let macro_vars = Variables::new(macro_prog);
+
+                    let mapping = macro_vars
+                        .iter()
+                        .map(|name| (name.clone(), vars.issue_name(name)))
+                        .collect();
+
+                    stmt_list.push(S::Assign(replace_var(&macro_prog.input_var, mapping)?));
+
+                    stmt_list.push(S::Assign(, ))
+                }
+            };
+        }
+        Ok(Block(stmt_list))
+    }
+
+    let main_prog_vars = Variables::new(main_prog);
+    let mut done = false;
+    inner(block, progs, &mut done)
 }
 
 fn replace_vars_in_block(
