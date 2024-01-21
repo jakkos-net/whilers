@@ -34,7 +34,7 @@ pub struct Prog {
 impl Display for Prog {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         format!(
-            "{} read {} {{\n{}\n}} write {}",
+            "{} read {} {} write {}",
             self.prog_name, self.input_var, self.body, self.output_var
         )
         .fmt(f)

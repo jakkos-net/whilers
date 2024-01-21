@@ -1,15 +1,18 @@
 // This module contains functionality for converting Extended While programs into Core While programs.
 
-use anyhow::Context;
-use indexmap::{IndexMap, IndexSet};
+use anyhow::{bail, Context};
+use indexmap::IndexMap;
 
 use crate::{
     output::Variables,
     parser::{Block, Expression, Prog, ProgName, Statement, VarName},
 };
 
-// Converting numbers, lists, and switch statements to core while is straight forward
+pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
+    let prog = macros_to_core(prog, progs);
 
+    prog
+}
 pub fn num_to_core(n: usize) -> Expression {
     match n {
         0 => Expression::Nil,
@@ -56,40 +59,10 @@ pub fn switch_to_ifs(
     recur(cond, &v[..], default.0.clone())[0].clone()
 }
 
-// macros are slightly more annoying as we have to replace all the conflicting variable names
-pub fn macros_to_core(
-    main_prog: &Prog,
-    main_prog_name: &ProgName,
-    progs: &IndexMap<ProgName, Prog>,
-) -> anyhow::Result<Prog> {
-    let mut used_progs: IndexSet<ProgName> = Default::default();
-    used_progs.insert(main_prog_name.clone());
-
-    // let mut main_prog = main_prog.clone();
-    // let used_vars = Varnums::new(&main_prog);
-
-    // while there are still macros
-    // get used varnames in prog
-    // find a macro
-
-    // replace macro with:
-    //   assign(mapped_input_var, mapped_input_expr)
-    //   rest of program block
-
-    todo!()
-}
-
-fn replace_macro_in_block(
-    block: &Block,
-    progs: &IndexMap<ProgName, Prog>,
-) -> anyhow::Result<Block> {
-    fn inner(
-        block: &Block,
-        progs: &IndexMap<ProgName, Prog>,
-        done: &mut bool,
-    ) -> anyhow::Result<Block> {
+fn macros_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
+    fn convert<'a>(block: &Block, context: &mut Context<'a>) -> anyhow::Result<Block> {
         // we only want to replace one macro at a time
-        if *done {
+        if context.made_change {
             return Ok(block.clone());
         }
 
@@ -101,12 +74,12 @@ fn replace_macro_in_block(
                 S::Assign(_, _) => stmt_list.push(stmt.clone()),
                 Statement::While { cond, body } => stmt_list.push(S::While {
                     cond: cond.clone(),
-                    body: inner(body, progs, done)?,
+                    body: convert(body, context)?,
                 }),
                 Statement::If { cond, then, or } => stmt_list.push(S::If {
                     cond: cond.clone(),
-                    then: inner(then, progs, done)?,
-                    or: inner(or, progs, done)?,
+                    then: convert(then, context)?,
+                    or: convert(or, context)?,
                 }),
                 Statement::Switch {
                     cond,
@@ -116,38 +89,76 @@ fn replace_macro_in_block(
                     cond: cond.clone(),
                     cases: cases
                         .into_iter()
-                        .map(|(cond, block)| Ok((cond.clone(), inner(block, progs, done)?)))
+                        .map(|(cond, block)| Ok((cond.clone(), convert(block, context)?)))
                         .collect::<anyhow::Result<_>>()?,
-                    default: inner(default, progs, done)?,
+                    default: convert(default, context)?,
                 }),
                 Statement::Macro {
                     var,
                     prog_name,
                     input_expr,
                 } => {
-                    *done = true;
+                    context.made_change = true;
 
-                    let macro_prog = progs.get(prog_name).with_context(|| format!("Tried to convert macro call to '{prog_name}' to core while, but this program does not exist!"))?;
-                    let vars = Variables::new(macro_prog);
+                    let macro_prog = context.progs.get(prog_name).with_context(|| format!("Tried to convert macro call to '{prog_name}' to core while, but this program does not exist!"))?;
                     let macro_vars = Variables::new(macro_prog);
 
                     let mapping = macro_vars
                         .iter()
-                        .map(|name| (name.clone(), vars.issue_name(name)))
+                        .map(|name| (name.clone(), context.main_prog_vars.issue_name(name)))
                         .collect();
 
-                    stmt_list.push(S::Assign(replace_var(&macro_prog.input_var, mapping)?));
+                    stmt_list.push(S::Assign(
+                        replace_var(&macro_prog.input_var, &mapping)?,
+                        input_expr.clone(),
+                    ));
 
-                    stmt_list.push(S::Assign(, ))
+                    stmt_list.extend(
+                        replace_vars_in_block(&macro_prog.body, &mapping)?
+                            .0
+                            .into_iter(),
+                    );
+
+                    stmt_list.push(S::Assign(
+                        var.clone(),
+                        Expression::Var(replace_var(&macro_prog.output_var, &mapping)?),
+                    ))
                 }
             };
         }
         Ok(Block(stmt_list))
     }
 
-    let main_prog_vars = Variables::new(main_prog);
-    let mut done = false;
-    inner(block, progs, &mut done)
+    struct Context<'a> {
+        main_prog_vars: Variables,
+        progs: &'a IndexMap<ProgName, Prog>,
+        made_change: bool,
+    }
+
+    let max_iter = 1000;
+    let mut i = 0;
+    let mut prog = prog.clone();
+    loop {
+        let mut context = Context {
+            main_prog_vars: Variables::new(&prog),
+            progs,
+            made_change: false,
+        };
+
+        prog.body = convert(&prog.body, &mut context)?;
+
+        // if we didn't convert any macros during a pass, it means we are finished
+        if !context.made_change {
+            break;
+        }
+
+        i += 1;
+        if i >= max_iter {
+            bail!("Exceeded max iteration count when trying to convert macro calls to core While, check if the program contains recursive macro calls (which are not allowed).")
+        }
+    }
+
+    Ok(prog)
 }
 
 fn replace_vars_in_block(
@@ -166,7 +177,7 @@ fn replace_vars_in_block(
                 ),
                 S::While { cond, body } => S::While {
                     cond: replace_vars_in_expr(cond, mapping)?,
-                    body: replace_vars_in_block(block, mapping)?,
+                    body: replace_vars_in_block(body, mapping)?,
                 },
                 S::If { cond, then, or } => S::If {
                     cond: replace_vars_in_expr(cond, mapping)?,

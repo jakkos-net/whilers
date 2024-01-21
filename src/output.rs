@@ -7,6 +7,7 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     atoms::Atom,
+    extended_to_core::prog_to_core,
     interpret::{interpret, ExecState},
     parser::{Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
 };
@@ -97,8 +98,14 @@ pub fn generate_output(
             OutputFormat::NestedListOfAtoms => {
                 generate_output_with_debug(&output_tree, &store, debug, parse_nest_list_atoms)
             }
-            OutputFormat::ProgramAsData => Output::Text(unparse_prog(main_prog)),
-            OutputFormat::CoreWhile => Output::Text(main_prog.to_string()),
+            OutputFormat::ProgramAsData => match prog_to_core(main_prog, progs) {
+                Ok(prog) => Output::Text(unparse_prog(&prog)),
+                Err(e) => Output::Error(e.to_string()),
+            },
+            OutputFormat::CoreWhile => match prog_to_core(main_prog, progs) {
+                Ok(prog) => Output::Text(prog.to_string()),
+                Err(e) => Output::Error(e.to_string()),
+            },
         },
         Err(e) => Output::Error(format!("Program failed to run!\n{e}")),
     }
@@ -138,51 +145,66 @@ impl Variables {
     pub fn new(prog: &Prog) -> Self {
         let mut vars = Self(Default::default());
         vars.add(&prog.input_var);
-        Self::block(&prog.body, &mut vars);
+        vars.add_block(&prog.body);
         vars.add(&prog.output_var);
         vars
     }
 
-    fn block(block: &Block, varnums: &mut Self) {
+    fn add_block(&mut self, block: &Block) {
         for stmt in &block.0 {
             match stmt {
                 Statement::Assign(var, expr) => {
-                    varnums.add(var);
-                    Self::expr(expr, varnums);
+                    self.add(var);
+                    self.add_expr(expr);
                 }
                 Statement::While { cond, body } => {
-                    Self::expr(cond, varnums);
-                    Self::block(body, varnums);
+                    self.add_expr(cond);
+                    self.add_block(body);
                 }
                 Statement::If { cond, then, or } => {
-                    Self::expr(cond, varnums);
-                    Self::block(then, varnums);
-                    Self::block(or, varnums);
+                    self.add_expr(cond);
+                    self.add_block(then);
+                    self.add_block(or);
                 }
                 Statement::Macro {
-                    var: _,
+                    var,
                     prog_name: _,
-                    input_expr: _,
-                } => todo!(),
+                    input_expr,
+                } => {
+                    self.add(var);
+                    self.add_expr(input_expr)
+                }
                 Statement::Switch {
-                    cond: _,
-                    cases: _,
-                    default: _,
-                } => todo!(),
+                    cond,
+                    cases,
+                    default,
+                } => {
+                    self.add_expr(cond);
+                    for (e, b) in cases {
+                        self.add_expr(e);
+                        self.add_block(b);
+                    }
+                    self.add_block(default);
+                }
             }
         }
     }
 
-    fn expr(expr: &Expression, varnums: &mut Self) {
+    fn add_expr(&mut self, expr: &Expression) {
+        use Expression as E;
         match expr {
-            Expression::Cons(e1, e2) => {
-                Self::expr(e1, varnums);
-                Self::expr(e2, varnums);
+            E::Cons(e1, e2) | E::Eq(e1, e2) => {
+                self.add_expr(e1);
+                self.add_expr(e2);
             }
-            Expression::Hd(e) => Self::expr(e, varnums),
-            Expression::Tl(e) => Self::expr(e, varnums),
-            Expression::Var(var) => varnums.add(var),
-            _ => (),
+            E::Hd(e) | E::Tl(e) => self.add_expr(e),
+            E::Var(var) => self.add(var),
+            E::Nil | E::Num(_) | E::Bool(_) => (),
+            E::List(list) => {
+                for e in list {
+                    self.add_expr(e)
+                }
+            }
         }
     }
 
