@@ -31,6 +31,10 @@ pub struct Prog {
     pub output_var: VarName,
 }
 
+fn indent(s: &str) -> String {
+    format!("\t{}", s.replace("\n", "\n\t"))
+}
+
 impl Display for Prog {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         format!(
@@ -47,7 +51,7 @@ impl Display for Block {
             "{{\n{}\n}}",
             self.0
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| indent(s.to_string().as_str()))
                 .collect::<Vec<_>>()
                 .join(";\n")
         )
