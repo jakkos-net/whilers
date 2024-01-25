@@ -61,7 +61,17 @@ impl Display for Statement {
         match self {
             Statement::Assign(var, e) => format!("{var} := {e}"),
             Statement::While { cond, body } => format!("while {cond} {body}"),
-            Statement::If { cond, then, or } => format!("if {cond} {then} else {or}"),
+            Statement::If { cond, then, or } => {
+                format!(
+                    "if {cond} {then}{}",
+                    // skip the else clause if it's empty
+                    if or.0.is_empty() {
+                        "".into()
+                    } else {
+                        format!(" else {or}")
+                    }
+                )
+            }
             Statement::Macro {
                 var,
                 prog_name: prog,
