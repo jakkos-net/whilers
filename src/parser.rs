@@ -195,10 +195,30 @@ pub enum NilTree {
 
 impl Display for NilTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NilTree::Nil => "nil".fmt(f),
-            NilTree::Node { left, right } => format!("<{}.{}>", left, right).fmt(f),
+        enum Item<'a> {
+            Node(&'a NilTree),
+            Char(char),
         }
+
+        let mut stack = vec![Item::Node(self)];
+        while let Some(item) = stack.pop() {
+            match item {
+                Item::Node(node) => match node {
+                    NilTree::Nil => {
+                        "nil".fmt(f)?;
+                    }
+                    NilTree::Node { left, right } => {
+                        stack.push(Item::Char('>'));
+                        stack.push(Item::Node(right));
+                        stack.push(Item::Char('.'));
+                        stack.push(Item::Node(left));
+                        stack.push(Item::Char('<'));
+                    }
+                },
+                Item::Char(c) => c.fmt(f)?,
+            }
+        }
+        Ok(())
     }
 }
 
