@@ -10,6 +10,7 @@ use crate::{
     extended_to_core::prog_to_core,
     interpret::{interpret, ExecState},
     parser::{Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
+    utils::indent,
 };
 
 #[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize, Copy)]
@@ -130,12 +131,12 @@ fn generate_output_with_debug(
 }
 
 pub fn unparse_prog(prog: &Prog) -> String {
-    let varnums = Variables::new(prog);
+    let vars = Variables::new(prog);
     format!(
-        "[{},\n\t{},\n{}]",
-        varnums.get(&prog.input_var),
-        unparse_block(&prog.body, &varnums),
-        varnums.get(&prog.output_var)
+        "[{}, {}, {}]",
+        vars.get(&prog.input_var),
+        unparse_block(&prog.body, &vars),
+        vars.get(&prog.output_var)
     )
 }
 
@@ -233,53 +234,56 @@ impl Variables {
     }
 }
 
-pub fn unparse_block(block: &Block, varnums: &Variables) -> String {
+pub fn unparse_block(block: &Block, vars: &Variables) -> String {
+    if block.0.is_empty() {
+        return "[]".into();
+    }
     format!(
-        "[\n\t{}\n]",
+        "[\n{}\n]",
         block
             .0
             .iter()
-            .map(|stmt| unparse_stmt(stmt, varnums))
+            .map(|stmt| indent(unparse_stmt(stmt, vars).as_str()))
             .collect::<Vec<_>>()
             .join(",\n")
     )
 }
 
-pub fn unparse_stmt(stmt: &Statement, varnums: &Variables) -> String {
+pub fn unparse_stmt(stmt: &Statement, vars: &Variables) -> String {
     format!(
         "[{}]",
         match stmt {
             Statement::Assign(var, expr) =>
-                format!("@:=, {}, {}", varnums.get(var), unparse_expr(expr, varnums)),
+                format!("@:=, {}, {}", vars.get(var), unparse_expr(expr, vars)),
             Statement::While { cond, body } => format!(
-                "@while,{},\n\t{}",
-                unparse_expr(cond, varnums),
-                unparse_block(body, varnums)
+                "@while, {}, {}",
+                unparse_expr(cond, vars),
+                unparse_block(body, vars)
             ),
             Statement::If { cond, then, or } => format!(
-                "@if,{},\n\t{}{}",
-                unparse_expr(cond, varnums),
-                unparse_block(then, varnums),
-                format!(",\n\t{}", unparse_block(or, varnums))
+                "@if, {}, {}, {}",
+                unparse_expr(cond, vars),
+                unparse_block(then, vars),
+                unparse_block(or, vars)
             ),
             _ => panic!("Cannot unparse extended While statment: {stmt}"),
         }
     )
 }
 
-pub fn unparse_expr(expr: &Expression, varnums: &Variables) -> String {
+pub fn unparse_expr(expr: &Expression, vars: &Variables) -> String {
     format!(
         "[{}]",
         match expr {
             Expression::Cons(e1, e2) => format!(
                 "@cons, {}, {}",
-                unparse_expr(e1, varnums),
-                unparse_expr(e2, varnums)
+                unparse_expr(e1, vars),
+                unparse_expr(e2, vars)
             ),
-            Expression::Hd(e) => format!("@hd, {}", unparse_expr(e, varnums)),
-            Expression::Tl(e) => format!("@tl, {}", unparse_expr(e, varnums)),
+            Expression::Hd(e) => format!("@hd, {}", unparse_expr(e, vars)),
+            Expression::Tl(e) => format!("@tl, {}", unparse_expr(e, vars)),
             Expression::Nil => "@quote, nil".into(),
-            Expression::Var(var) => format!("@var, {}", varnums.get(var)),
+            Expression::Var(var) => format!("@var, {}", vars.get(var)),
             _ => panic!("Cannot unparse extended While expression: {expr} "),
         }
     )

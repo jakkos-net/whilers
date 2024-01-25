@@ -21,6 +21,7 @@ use regex::Regex;
 use crate::{
     atoms::Atom,
     extended_to_core::{list_to_core, num_to_core},
+    utils::indent,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,10 +30,6 @@ pub struct Prog {
     pub input_var: VarName,
     pub body: Block,
     pub output_var: VarName,
-}
-
-fn indent(s: &str) -> String {
-    format!("\t{}", s.replace("\n", "\n\t"))
 }
 
 impl Display for Prog {
