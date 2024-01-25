@@ -15,10 +15,8 @@ use crate::{
 #[derive(Serialize, Deserialize)]
 pub struct EditorState {
     tabs: Vec<Tab>,
-    #[serde(skip)]
     active_tab_id: usize,
     input: String,
-    #[serde(skip)]
     output: Output,
     output_format: OutputFormat,
     debug: bool,
@@ -198,8 +196,6 @@ fn input_ui(ui: &mut Ui, state: &mut EditorState) {
                     ListOfIntegers,
                     NestedListOfIntegers,
                     NestedListOfAtoms,
-                    ProgramAsData,
-                    CoreWhile,
                 ] {
                     ui.selectable_value(&mut state.output_format, fmt, fmt.to_string());
                 }
@@ -217,7 +213,26 @@ fn input_ui(ui: &mut Ui, state: &mut EditorState) {
 }
 
 fn run_ui(ui: &mut Ui, state: &mut EditorState) {
-    if ui.button("Run").clicked() {
+    ui.horizontal(|ui| {
+        let mut output_format = None;
+        if ui.button("Run").clicked() {
+            output_format = Some(state.output_format.clone())
+        }
+
+        if ui.button("To Core While").clicked() {
+            output_format = Some(OutputFormat::CoreWhile)
+        }
+
+        if ui.button("To programs as data").clicked() {
+            output_format = Some(OutputFormat::ProgramAsData)
+        }
+
+        if let Some(output_format) = output_format {
+            run(state, output_format);
+        }
+    });
+
+    fn run(state: &mut EditorState, output_format: OutputFormat) {
         let mut all_progs: IndexMap<ProgName, Prog> = Default::default();
 
         // check that all open files contain valid code and add them to a map of parsed programs
@@ -226,9 +241,9 @@ fn run_ui(ui: &mut Ui, state: &mut EditorState) {
                 Ok(prog) => {
                     if let Some(prog) = all_progs.insert(prog.prog_name.clone(), prog) {
                         state.output = Output::Error(format!(
-                                "Multiple programs have the same name: '{}'\nFirst duplicate found in tab {id}",
-                                prog.prog_name
-                            ));
+                                    "Multiple programs have the same name: '{}'\nFirst duplicate found in tab {id}",
+                                    prog.prog_name
+                                ));
                         return;
                     }
                 }
@@ -244,7 +259,7 @@ fn run_ui(ui: &mut Ui, state: &mut EditorState) {
         if let Some((_, prog)) = all_progs.get_index(state.active_tab_id) {
             state.output = match input(&state.input) {
                 Ok(input) => {
-                    generate_output(&prog, &input, &all_progs, &state.output_format, state.debug)
+                    generate_output(&prog, &input, &all_progs, &output_format, state.debug)
                 }
                 Err(e) => Output::Error(e.to_string()),
             }
