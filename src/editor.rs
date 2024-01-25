@@ -1,5 +1,6 @@
 use egui::{
-    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, TextEdit, TextStyle, Ui,
+    CentralPanel, CollapsingHeader, Color32, ComboBox, Context, RichText, ScrollArea, TextEdit,
+    TextStyle, Ui,
 };
 
 use indexmap::IndexMap;
@@ -66,6 +67,8 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
         ScrollArea::vertical()
             .id_source("top level scroll")
             .show(ui, |ui| {
+                title_ui(ui);
+
                 code_tabs_ui(ctx, ui, state);
 
                 ui.separator();
@@ -76,12 +79,28 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
 
                 output_ui(ui, state);
 
+                credits_ui(ui);
+
                 if ui.small_button("Reset").clicked() {
                     *state = EditorState::default();
                     ctx.memory_mut(|m| *m = Default::default());
                 }
             });
     });
+}
+
+fn title_ui(ui: &mut Ui) {
+    ui.label(RichText::new("whilers").strong().size(30.0));
+    ui.separator();
+    ui.label("An editor and interpreter for the While language used in Prof. Bernhard Reus' Limits of Computation module.");
+    ui.horizontal(|ui| {
+        ui.label("Source code available at:");
+        ui.hyperlink_to(
+            "github.com/jakkos-net/whilers",
+            "https://www.github.com/jakkos-net/whilers",
+        );
+    });
+    ui.separator();
 }
 
 fn import_files_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
@@ -289,4 +308,14 @@ fn output_ui(ui: &mut Ui, state: &mut EditorState) {
             }
         }
     });
+}
+
+fn credits_ui(ui: &mut Ui) {
+    CollapsingHeader::new(RichText::new("Credits"))
+        .default_open(false)
+        .show(ui, |ui| {
+            ui.label("Jak Kostrzanowski: Programming");
+            ui.label("Prof. Bernhard Reus: Limits of Computation module, While programs, testing");
+            ui.label("Toby Dennison: While syntax highlighting rules");
+        });
 }
