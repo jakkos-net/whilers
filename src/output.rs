@@ -24,32 +24,6 @@ pub enum OutputFormat {
     CoreWhile,
 }
 
-impl OutputFormat {
-    pub fn takes_input(&self) -> bool {
-        match self {
-            OutputFormat::NilTree => true,
-            OutputFormat::Integer => true,
-            OutputFormat::ListOfIntegers => true,
-            OutputFormat::NestedListOfIntegers => true,
-            OutputFormat::NestedListOfAtoms => true,
-            OutputFormat::ProgramAsData => false,
-            OutputFormat::CoreWhile => false,
-        }
-    }
-
-    pub fn can_be_debugged(&self) -> bool {
-        match self {
-            OutputFormat::NilTree => true,
-            OutputFormat::Integer => true,
-            OutputFormat::ListOfIntegers => true,
-            OutputFormat::NestedListOfIntegers => true,
-            OutputFormat::NestedListOfAtoms => true,
-            OutputFormat::ProgramAsData => false,
-            OutputFormat::CoreWhile => false,
-        }
-    }
-}
-
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub enum Output {
     Text(String),

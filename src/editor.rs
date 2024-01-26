@@ -186,18 +186,16 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
 }
 
 fn input_ui(ui: &mut Ui, state: &mut EditorState) {
-    if state.output_format.takes_input() {
-        ui.heading("Input");
-        ui.add(
-            TextEdit::multiline(&mut state.input)
-                .font(TextStyle::Monospace)
-                .code_editor()
-                .desired_rows(1)
-                .lock_focus(true)
-                .desired_width(f32::INFINITY)
-                .layouter(&mut layouter()),
-        );
-    }
+    ui.heading("Input");
+    ui.add(
+        TextEdit::multiline(&mut state.input)
+            .font(TextStyle::Monospace)
+            .code_editor()
+            .desired_rows(1)
+            .lock_focus(true)
+            .desired_width(f32::INFINITY)
+            .layouter(&mut layouter()),
+    );
 
     ui.horizontal(|ui| {
         let old_output_format = state.output_format;
@@ -224,10 +222,8 @@ fn input_ui(ui: &mut Ui, state: &mut EditorState) {
             state.output = Output::None;
         };
 
-        if state.output_format.can_be_debugged() {
-            ui.label("Debug?:");
-            ui.checkbox(&mut state.debug, "");
-        }
+        ui.label("Debug?:");
+        ui.checkbox(&mut state.debug, "");
     });
 }
 
