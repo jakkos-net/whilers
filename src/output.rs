@@ -4,6 +4,7 @@ use std::fmt::Display;
 
 use anyhow::bail;
 use indexmap::{IndexMap, IndexSet};
+use regex::{Captures, Regex};
 
 use crate::{
     atoms::Atom,
@@ -282,17 +283,19 @@ pub fn parse_num_str(tree: &NilTree) -> String {
 
 pub fn parse_num_or_atom_str(tree: &NilTree) -> String {
     match parse_num(tree) {
-        Ok(n) => {
-            if n < u8::MAX as usize {
-                if let Ok(atom) = Atom::try_from(n as u8) {
-                    return atom.to_string();
-                }
-            }
-
-            n.to_string()
-        }
+        Ok(n) => num_to_num_or_atom_str(n),
         Err(e) => e.to_string(),
     }
+}
+
+pub fn num_to_num_or_atom_str(n: usize) -> String {
+    if n < u8::MAX as usize {
+        if let Ok(atom) = Atom::try_from(n as u8) {
+            return atom.to_string();
+        }
+    }
+
+    n.to_string()
 }
 
 // there is probably a better way to do these functions with iterators
@@ -320,11 +323,13 @@ pub fn parse_nest_list_ints(tree: &NilTree) -> String {
 }
 
 pub fn parse_nest_list_atoms(tree: &NilTree) -> String {
-    parse_list_f(tree, |tree| {
-        if let Ok(_) = parse_num(tree) {
-            parse_num_or_atom_str(tree)
-        } else {
-            parse_nest_list_atoms(tree)
-        }
+    let s = parse_nest_list_ints(tree);
+    let re = Regex::new(r"\[\s*(\d*)\s*,").unwrap();
+    re.replace_all(&s, |x: &Captures<'_>| {
+        format!(
+            "[{},",
+            num_to_num_or_atom_str(x[1].to_string().parse().unwrap())
+        )
     })
+    .to_string()
 }
