@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use once_cell::sync::Lazy;
 
 use crate::{
@@ -253,11 +253,70 @@ fn replace_var(
         .with_context(|| format!("Var name '{var_name}' did not exist in replacements map!"))
 }
 
-// equals is the worst case, as the equals expression has to be replaced with a new expression... and entirely new statement has to be added! Nested equals get particularly head-scratching to work out.
+const EQUALG_PROGRAM: Lazy<IndexMap<ProgName, Prog>> = Lazy::new(|| {
+    [(
+        ProgName("equalG".into()),
+        parse(include_str!("../programs/equalG.while")).unwrap(),
+    )]
+    .into()
+});
 
-const EQUALG_PROGRAM: Lazy<Prog> =
-    Lazy::new(|| parse(include_str!("../programs/equalG.while")).unwrap());
+pub fn equals_to_core(prog: &Prog) -> Prog {
+    let mut vars = Variables::new(prog);
+    let mut prog = prog.clone();
+    prog.body = replace_equals_in_block(&prog.body, &mut vars);
+    prog
+}
 
-pub fn equals_to_core(_prog: &Prog) -> Prog {
-    todo!()
+fn replace_equals_in_block(block: &Block, vars: &mut Variables) -> Block {
+    let mut new_stmts = vec![];
+    for stmt in &block.0 {
+        use Statement as S;
+        match stmt {
+            S::Assign(var, expr) => {
+                let (new_expr, new_stmt) = replace_equals_in_expr(expr, vars);
+                if let Some(new_stmt) = new_stmt {
+                    new_stmts.push(new_stmt)
+                }
+                new_stmts.push(S::Assign(var.clone(), new_expr))
+            }
+            Statement::While { cond, body } => todo!(),
+            Statement::If { cond, then, or } => todo!(),
+            Statement::Macro {
+                var,
+                prog_name,
+                input_expr,
+            } => todo!(),
+            Statement::Switch {
+                cond,
+                cases,
+                default,
+            } => todo!(),
+        }
+    }
+
+    Block(new_stmts)
+}
+
+fn replace_equals_in_expr(
+    expr: &Expression,
+    vars: &mut Variables,
+) -> (Expression, Option<Statement>) {
+    use Expression as E;
+    match expr {
+        E::Cons(e1, e2) => todo!(),
+        E::Hd(_) | E::Tl(_) => todo!(),
+        E::Nil | E::Num(_) | E::Bool(_) | E::Var(_) => todo!(),
+        Expression::List(_) => todo!(),
+        Expression::Eq(e1, e2) => {
+            let new_var = vars.issue_name(&VarName("eq".into()));
+            let new_expr = E::Var(new_var.clone());
+            let new_stmt = Statement::Macro {
+                var: new_var,
+                prog_name: ProgName("equalG".into()),
+                input_expr: E::List(vec![*e1.to_owned(), *e2.to_owned()]),
+            };
+            todo!()
+        }
+    }
 }
