@@ -67,18 +67,16 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
         ScrollArea::vertical()
             .id_source("top level scroll")
             .show(ui, |ui| {
+                let spacing = 15.0;
                 title_ui(ui);
-
                 code_tabs_ui(ctx, ui, state);
-
                 ui.separator();
-
-                input_ui(ui, state);
-
                 run_ui(ui, state);
-
+                ui.add_space(spacing);
+                convert_ui(ui, state);
+                ui.add_space(spacing);
                 output_ui(ui, state);
-
+                ui.add_space(spacing);
                 credits_ui(ui);
 
                 if ui.small_button("Reset").clicked() {
@@ -185,18 +183,20 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
     });
 }
 
-fn input_ui(ui: &mut Ui, state: &mut EditorState) {
-    ui.heading("Input");
-    ui.add(
-        TextEdit::multiline(&mut state.input)
-            .font(TextStyle::Monospace)
-            .code_editor()
-            .desired_rows(1)
-            .lock_focus(true)
-            .desired_width(f32::INFINITY)
-            .layouter(&mut layouter()),
-    );
-
+fn run_ui(ui: &mut Ui, state: &mut EditorState) {
+    ui.heading("Run");
+    ui.horizontal(|ui| {
+        ui.label("Input:");
+        ui.add(
+            TextEdit::multiline(&mut state.input)
+                .font(TextStyle::Monospace)
+                .code_editor()
+                .desired_rows(1)
+                .lock_focus(true)
+                .desired_width(f32::INFINITY)
+                .layouter(&mut layouter()),
+        );
+    });
     ui.horizontal(|ui| {
         let old_output_format = state.output_format;
         ui.label("Output format:");
@@ -225,15 +225,15 @@ fn input_ui(ui: &mut Ui, state: &mut EditorState) {
         ui.label("Debug?:");
         ui.checkbox(&mut state.debug, "");
     });
+    if ui.button("Run").clicked() {
+        run(state, state.output_format)
+    }
 }
 
-fn run_ui(ui: &mut Ui, state: &mut EditorState) {
+fn convert_ui(ui: &mut Ui, state: &mut EditorState) {
+    ui.heading("Convert");
     ui.horizontal(|ui| {
         let mut output_format = None;
-        if ui.button("Run").clicked() {
-            output_format = Some(state.output_format.clone())
-        }
-
         if ui.button("To Core While").clicked() {
             output_format = Some(OutputFormat::CoreWhile)
         }
@@ -246,38 +246,35 @@ fn run_ui(ui: &mut Ui, state: &mut EditorState) {
             run(state, output_format);
         }
     });
+}
 
-    fn run(state: &mut EditorState, output_format: OutputFormat) {
-        let mut all_progs: IndexMap<ProgName, Prog> = Default::default();
+fn run(state: &mut EditorState, output_format: OutputFormat) {
+    let mut all_progs: IndexMap<ProgName, Prog> = Default::default();
 
-        // check that all open files contain valid code and add them to a map of parsed programs
-        for (id, tab) in state.tabs.iter().enumerate() {
-            match parse(&tab.code) {
-                Ok(prog) => {
-                    if let Some(prog) = all_progs.insert(prog.prog_name.clone(), prog) {
-                        state.output = Output::Error(format!(
+    // check that all open files contain valid code and add them to a map of parsed programs
+    for (id, tab) in state.tabs.iter().enumerate() {
+        match parse(&tab.code) {
+            Ok(prog) => {
+                if let Some(prog) = all_progs.insert(prog.prog_name.clone(), prog) {
+                    state.output = Output::Error(format!(
                                     "Multiple programs have the same name: '{}'\nFirst duplicate found in tab {id}",
                                     prog.prog_name
                                 ));
-                        return;
-                    }
-                }
-                Err(e) => {
-                    state.output =
-                        Output::Error(format!("Failed to parse src file in tab {id}!\n{e}"));
                     return;
                 }
             }
-        }
-
-        // try and get the current tab's program and run it
-        if let Some((_, prog)) = all_progs.get_index(state.active_tab_id) {
-            state.output = match input(&state.input) {
-                Ok(input) => {
-                    generate_output(&prog, &input, &all_progs, &output_format, state.debug)
-                }
-                Err(e) => Output::Error(e.to_string()),
+            Err(e) => {
+                state.output = Output::Error(format!("Failed to parse src file in tab {id}!\n{e}"));
+                return;
             }
+        }
+    }
+
+    // try and get the current tab's program and run it
+    if let Some((_, prog)) = all_progs.get_index(state.active_tab_id) {
+        state.output = match input(&state.input) {
+            Ok(input) => generate_output(&prog, &input, &all_progs, &output_format, state.debug),
+            Err(e) => Output::Error(e.to_string()),
         }
     }
 }
