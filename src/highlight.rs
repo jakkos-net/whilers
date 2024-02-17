@@ -1,6 +1,10 @@
 // This module contains functionality for syntax highlighting
 
-use std::sync::Arc;
+use std::{
+    collections::BTreeMap,
+    io::{BufReader, Cursor},
+    sync::Arc,
+};
 
 use egui::{
     text::{LayoutJob, LayoutSection},
@@ -14,7 +18,15 @@ use syntect::{
     util::LinesWithEndings,
 };
 
-static SYNTAX_THEMES: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
+static SYNTAX_THEMES: Lazy<ThemeSet> = Lazy::new(|| {
+    let s = include_str!("./while.tmTheme");
+    let mut r = BufReader::new(Cursor::new(s));
+    ThemeSet {
+        themes: BTreeMap::from_iter(
+            [("while".into(), ThemeSet::load_from_reader(&mut r).unwrap())].into_iter(),
+        ),
+    }
+});
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(|| {
     let mut builder = SyntaxSetBuilder::new();
     builder.add(
@@ -50,7 +62,7 @@ fn try_layout_job(str: &str) -> anyhow::Result<LayoutJob> {
     };
     let mut highlighter = HighlightLines::new(
         SYNTAX_SET.find_syntax_by_extension("while").unwrap(),
-        &SYNTAX_THEMES.themes["base16-ocean.dark"],
+        &SYNTAX_THEMES.themes["while"],
     );
     for line_str in LinesWithEndings::from(str) {
         for (style, range) in highlighter.highlight_line(line_str, &SYNTAX_SET)? {
