@@ -1,5 +1,3 @@
-// This module contains functionality for converting Extended While programs into Core While programs.
-
 use anyhow::{bail, Context};
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
