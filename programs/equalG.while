@@ -1,0 +1,45 @@
+(* equalG.while
+
+   Takes as input a list L of pairs of trees and returns whether all pairs
+   [s,t] in L are equal, thus generalising equality of trees.
+   Note that any extra elements in the lists like rubbish in [s,t,rubbish]
+   will be ignored.
+
+   This, means, in particular, that we can compare two trees s and t by calling
+   ./hwhile equalG [[s,t]]
+
+   This implementation follows strictly the _tail recursive_ algorithm 
+   outlined in Exercise Sheet 4, so there are few comments in the code.
+  
+       
+   (c) 2018-23 Bernhard Reus 
+*)
+
+
+equalG read L {
+ res := true; // initialise res to true - set false when non-equal pair of trees encountered
+ // traverse along the list
+ while L {
+  X:= hd L; // first pair of trees
+  s := hd X;
+  t := hd tl X;
+  if s {
+    if t { // both are not nil so continue
+          L := cons [hd s, hd t] cons [tl s, tl t] tl L
+         } 
+    else  //  s not nil but t is
+         { res := nil;
+           L := nil
+         }
+    }
+   else {  // s nil but t isn't
+    if t { res := nil;
+           L := nil
+         }
+    else // both s and t are nil
+         { L := tl L
+         }
+    }
+  } // while
+ }
+write res 

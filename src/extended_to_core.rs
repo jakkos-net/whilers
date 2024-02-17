@@ -2,10 +2,11 @@
 
 use anyhow::{bail, Context};
 use indexmap::IndexMap;
+use once_cell::sync::Lazy;
 
 use crate::{
     output::Variables,
-    parser::{Block, Expression, Prog, ProgName, Statement, VarName},
+    parser::{parse, Block, Expression, Prog, ProgName, Statement, VarName},
 };
 
 pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
@@ -255,6 +256,9 @@ fn replace_var(
 }
 
 // equals is the worst case, as the equals expression has to be replaced with a new expression... and entirely new statement has to be added! Nested equals get particularly head-scratching to work out.
+
+const EQUALG_PROGRAM: Lazy<Prog> =
+    Lazy::new(|| parse(include_str!("../programs/equalG.while")).unwrap());
 
 pub fn equals_to_core(_prog: &Prog) -> Prog {
     todo!()
