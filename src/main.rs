@@ -1,6 +1,8 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use egui::{Style, Visuals};
+
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
@@ -14,7 +16,10 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "whilers",
         native_options,
-        Box::new(|cc| Box::new(whilers::App::new(cc))),
+        Box::new(|cc| {
+            cc.egui_ctx.set_style(style());
+            Box::new(whilers::App::new(cc))
+        }),
     )
 }
 
@@ -31,9 +36,19 @@ fn main() {
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(whilers::App::new(cc))),
+                Box::new(|cc| {
+                    cc.egui_ctx.set_style(style());
+                    Box::new(whilers::App::new(cc))
+                }),
             )
             .await
             .expect("failed to start eframe");
     });
+}
+
+fn style() -> Style {
+    Style {
+        visuals: Visuals::light(),
+        ..Default::default()
+    }
 }

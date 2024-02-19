@@ -12,13 +12,13 @@
             <key>settings</key>
             <dict>
                 <key>background</key>
-                <string>#222222</string>
-                <key>foreground</key>
                 <string>#ffffff</string>
+                <key>foreground</key>
+                <string>#444444</string>
                 <key>selection</key>
-                <string>#4444444</string>
+                <string>#444444</string>
                 <key>caret</key>
-                <string>#fffffff</string>
+                <string>#ffffff</string>
             </dict>
         </dict>
         <!-- Scope styles -->
@@ -63,7 +63,7 @@
             <key>settings</key>
             <dict>
                 <key>foreground</key>
-                <string>#ffd700</string>
+                <string>#bba600</string>
             </dict>
         </dict>
         <dict>

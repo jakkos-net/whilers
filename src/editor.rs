@@ -1,6 +1,5 @@
 use egui::{
-    CentralPanel, CollapsingHeader, Color32, ComboBox, Context, RichText, ScrollArea, TextEdit,
-    TextStyle, Ui,
+    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, TextEdit, TextStyle, Ui,
 };
 
 use indexmap::IndexMap;
@@ -76,8 +75,6 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 convert_ui(ui, state);
                 ui.add_space(spacing);
                 output_ui(ui, state);
-                ui.add_space(spacing);
-                credits_ui(ui);
 
                 if ui.small_button("Reset").clicked() {
                     *state = EditorState::default();
@@ -90,12 +87,27 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
 fn title_ui(ui: &mut Ui) {
     ui.label(RichText::new("whilers").strong().size(30.0));
     ui.separator();
-    ui.label("An editor and interpreter for the While language used in Prof. Bernhard Reus' Limits of Computation module.");
     ui.horizontal(|ui| {
-        ui.label("Source code available at:");
+        ui.label(
+            "An editor and interpreter for the While language from Prof. Bernhard Reus' textbook:",
+        );
+        ui.hyperlink_to(
+            "Limits of Computation - From a Programming Perspective",
+            "https://limits.bernhardreus.com/",
+        );
+    });
+    ui.horizontal(|ui| {
+        ui.label("Source code:");
         ui.hyperlink_to(
             "github.com/jakkos-net/whilers",
             "https://www.github.com/jakkos-net/whilers",
+        );
+    });
+    ui.horizontal(|ui| {
+        ui.label("Syntax highlighting rules:");
+        ui.hyperlink_to(
+            "github.com/tobydennison/WHILE-Syntax-Highlighter",
+            "https://github.com/tobydennison/WHILE-Syntax-Highlighter",
         );
     });
     ui.separator();
@@ -133,8 +145,8 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
                             RichText::new(name)
                                 .strong()
                                 .underline()
-                                .color(Color32::WHITE)
-                                .background_color(Color32::from_gray(96)),
+                                .color(Color32::BLACK)
+                                .background_color(Color32::from_gray(200)),
                         );
                     } else {
                         if ui.button(name).clicked() {
@@ -302,14 +314,4 @@ fn output_ui(ui: &mut Ui, state: &mut EditorState) {
             }
         }
     });
-}
-
-fn credits_ui(ui: &mut Ui) {
-    CollapsingHeader::new(RichText::new("Credits"))
-        .default_open(false)
-        .show(ui, |ui| {
-            ui.label("Jak Kostrzanowski: Programming");
-            ui.label("Prof. Bernhard Reus: Limits of Computation module, While programs, testing");
-            ui.label("Toby Dennison: While syntax highlighting rules");
-        });
 }
