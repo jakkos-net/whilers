@@ -17,7 +17,6 @@ pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Re
     prog = equals_to_core(&prog);
     // then convert the equalG macros into core
     prog = macros_to_core(&prog, &EQUALG_PROGRAM)?;
-
     Ok(prog)
 }
 pub fn num_to_core(n: usize) -> Expression {
@@ -81,7 +80,7 @@ pub fn stmt_to_core(stmt: &Statement) -> Statement {
             cond,
             cases,
             default,
-        } => switch_to_ifs(cond, cases, default),
+        } => switch_to_core(cond, cases, default),
     }
 }
 
@@ -426,7 +425,7 @@ fn replace_equals_in_expr(expr: &Expression, vars: &mut Variables) -> (Expressio
             new_stmts.push(Statement::Macro {
                 var: new_var,
                 prog_name: ProgName("equalG".into()),
-                input_expr: E::List(vec![E::List(vec![e1, e2])]),
+                input_expr: expr_to_core(&E::List(vec![E::List(vec![e1, e2])])),
             });
             (new_expr, new_stmts)
         }
