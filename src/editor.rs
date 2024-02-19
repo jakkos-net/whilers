@@ -155,6 +155,7 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
                 }
                 if ui.button("+").clicked() {
                     state.tabs.push(Default::default());
+                    state.active_tab_id += 1;
                 }
             });
         });
