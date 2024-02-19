@@ -464,9 +464,9 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
         // Lists
         map(
             delimited(
-                tag("["),
+                terminated(tag("["), multispace0),
                 separated_list0(tag(","), delimited(multispace0, expression, multispace0)),
-                tag("]"),
+                preceded(multispace0, tag("]")),
             ),
             |v| list_to_core(&v[..]),
         ),
