@@ -1,5 +1,5 @@
 use anyhow::{bail, Context};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 
 use crate::{
@@ -8,9 +8,17 @@ use crate::{
 };
 
 pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
-    let prog = macros_to_core(prog, progs);
+    let mut prog = prog.clone();
+    // first convert all the macros over
+    prog = macros_to_core(&prog, progs)?;
+    // then convert everything but macros and equality to core
+    prog.body = block_to_core(&prog.body);
+    // then convert the equalities into equalG macros
+    prog = equals_to_core(&prog);
+    // then convert the equalG macros into core
+    prog = macros_to_core(&prog, &EQUALG_PROGRAM)?;
 
-    prog
+    Ok(prog)
 }
 pub fn num_to_core(n: usize) -> Expression {
     match n {
@@ -22,8 +30,72 @@ pub fn num_to_core(n: usize) -> Expression {
 pub fn list_to_core(list: &[Expression]) -> Expression {
     match list {
         [] => Expression::Nil,
-        v => Expression::Cons(v[0].clone().into(), list_to_core(&v[1..]).into()),
+        v => Expression::Cons(Box::new(expr_to_core(&v[0])), list_to_core(&v[1..]).into()),
     }
+}
+
+pub fn bool_to_core(b: bool) -> Expression {
+    match b {
+        true => Expression::Cons(Box::new(Expression::Nil), Box::new(Expression::Nil)),
+        false => Expression::Nil,
+    }
+}
+
+pub fn expr_to_core(expr: &Expression) -> Expression {
+    use Expression as E;
+    match expr {
+        E::Cons(e1, e2) => E::Cons(Box::new(expr_to_core(e1)), Box::new(expr_to_core(e2))),
+        E::Hd(e) => E::Hd(Box::new(expr_to_core(e))),
+        E::Tl(e) => E::Tl(Box::new(expr_to_core(e))),
+        E::Nil | E::Var(_) => expr.clone(),
+        E::Num(n) => num_to_core(*n),
+        E::Bool(b) => bool_to_core(*b),
+        E::List(l) => list_to_core(l),
+        E::Eq(e1, e2) => E::Eq(Box::new(expr_to_core(e1)), Box::new(expr_to_core(e2))),
+    }
+}
+
+pub fn stmt_to_core(stmt: &Statement) -> Statement {
+    use Statement as S;
+    match stmt {
+        S::Assign(v, e) => S::Assign(v.clone(), expr_to_core(e)),
+        S::While { cond, body } => S::While {
+            cond: expr_to_core(cond),
+            body: block_to_core(body),
+        },
+        S::If { cond, then, or } => S::If {
+            cond: expr_to_core(cond),
+            then: block_to_core(then),
+            or: block_to_core(or),
+        },
+        S::Macro {
+            var,
+            prog_name,
+            input_expr,
+        } => S::Macro {
+            var: var.clone(),
+            prog_name: prog_name.clone(),
+            input_expr: expr_to_core(input_expr),
+        },
+        S::Switch {
+            cond,
+            cases,
+            default,
+        } => switch_to_ifs(cond, cases, default),
+    }
+}
+
+pub fn block_to_core(block: &Block) -> Block {
+    let stmts = block.0.iter().map(|stmt| stmt_to_core(stmt)).collect();
+    Block(stmts)
+}
+
+pub fn switch_to_core(
+    cond: &Expression,
+    cases: &Vec<(Expression, Block)>,
+    default: &Block,
+) -> Statement {
+    stmt_to_core(&switch_to_ifs(cond, cases, default))
 }
 
 pub fn switch_to_ifs(
@@ -269,54 +341,94 @@ pub fn equals_to_core(prog: &Prog) -> Prog {
 }
 
 fn replace_equals_in_block(block: &Block, vars: &mut Variables) -> Block {
-    let mut new_stmts = vec![];
+    let mut stmts = vec![];
     for stmt in &block.0 {
         use Statement as S;
         match stmt {
             S::Assign(var, expr) => {
-                let (new_expr, new_stmt) = replace_equals_in_expr(expr, vars);
-                if let Some(new_stmt) = new_stmt {
-                    new_stmts.push(new_stmt)
-                }
-                new_stmts.push(S::Assign(var.clone(), new_expr))
+                let (expr, new_stmts) = replace_equals_in_expr(expr, vars);
+                stmts.extend(new_stmts.into_iter());
+                stmts.push(S::Assign(var.clone(), expr))
             }
-            Statement::While { cond, body } => todo!(),
-            Statement::If { cond, then, or } => todo!(),
+            Statement::While { cond, body } => {
+                let (cond, new_stmts) = replace_equals_in_expr(cond, vars);
+                stmts.extend(new_stmts.into_iter());
+                let body = replace_equals_in_block(body, vars);
+                stmts.push(S::While { cond, body })
+            }
+            Statement::If { cond, then, or } => {
+                let (cond, new_stmts) = replace_equals_in_expr(cond, vars);
+                stmts.extend(new_stmts.into_iter());
+                let then = replace_equals_in_block(then, vars);
+                let or = replace_equals_in_block(or, vars);
+                stmts.push(S::If { cond, then, or })
+            }
             Statement::Macro {
                 var,
                 prog_name,
                 input_expr,
-            } => todo!(),
+            } => {
+                let (input_expr, new_stmts) = replace_equals_in_expr(input_expr, vars);
+                stmts.extend(new_stmts.into_iter());
+                stmts.push(S::Macro {
+                    var: var.clone(),
+                    prog_name: prog_name.clone(),
+                    input_expr,
+                })
+            }
             Statement::Switch {
                 cond,
                 cases,
                 default,
-            } => todo!(),
+            } => {
+                if let S::If { cond, then, or } = switch_to_ifs(cond, cases, default) {
+                    let (cond, new_stmts) = replace_equals_in_expr(&cond, vars);
+                    stmts.extend(new_stmts.into_iter());
+                    let then = replace_equals_in_block(&then, vars);
+                    let or = replace_equals_in_block(&or, vars);
+                    stmts.push(S::If { cond, then, or })
+                } else {
+                    panic!("Switch to ifs returned a non-If statement, please report this bug!")
+                }
+            }
         }
     }
 
-    Block(new_stmts)
+    Block(stmts)
 }
 
-fn replace_equals_in_expr(
-    expr: &Expression,
-    vars: &mut Variables,
-) -> (Expression, Option<Statement>) {
+fn replace_equals_in_expr(expr: &Expression, vars: &mut Variables) -> (Expression, Vec<Statement>) {
     use Expression as E;
     match expr {
-        E::Cons(e1, e2) => todo!(),
-        E::Hd(_) | E::Tl(_) => todo!(),
-        E::Nil | E::Num(_) | E::Bool(_) | E::Var(_) => todo!(),
-        Expression::List(_) => todo!(),
+        E::Cons(e1, e2) => {
+            let (e1, mut new_stmts) = replace_equals_in_expr(e1, vars);
+            let (e2, new_stmts2) = replace_equals_in_expr(e2, vars);
+            new_stmts.extend(new_stmts2.into_iter());
+
+            (E::Cons(Box::new(e1), Box::new(e2)), new_stmts)
+        }
+        E::Hd(e) => {
+            let (expr, stmts) = replace_equals_in_expr(e, vars);
+            (E::Hd(Box::new(expr)), stmts)
+        }
+        E::Tl(e) => {
+            let (expr, stmts) = replace_equals_in_expr(e, vars);
+            (E::Tl(Box::new(expr)), stmts)
+        }
+        E::Nil | E::Num(_) | E::Bool(_) | E::Var(_) => (expr.clone(), vec![]),
+        Expression::List(l) => replace_equals_in_expr(&list_to_core(l), vars),
         Expression::Eq(e1, e2) => {
+            let (e1, mut new_stmts) = replace_equals_in_expr(e1, vars);
+            let (e2, new_stmts2) = replace_equals_in_expr(e2, vars);
+            new_stmts.extend(new_stmts2.into_iter());
             let new_var = vars.issue_name(&VarName("eq".into()));
             let new_expr = E::Var(new_var.clone());
-            let new_stmt = Statement::Macro {
+            new_stmts.push(Statement::Macro {
                 var: new_var,
                 prog_name: ProgName("equalG".into()),
-                input_expr: E::List(vec![*e1.to_owned(), *e2.to_owned()]),
-            };
-            todo!()
+                input_expr: E::List(vec![E::List(vec![e1, e2])]),
+            });
+            (new_expr, new_stmts)
         }
     }
 }
