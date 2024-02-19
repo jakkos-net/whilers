@@ -292,8 +292,8 @@ pub fn remove_comments(s: &str) -> String {
 
 pub fn name(s: &str) -> IResult<&str, &str, VerboseError<&str>> {
     recognize(pair(
-        alt((alpha1, tag("_"))),
-        many0_count(alt((alphanumeric1, tag("_")))),
+        alt((alpha1, tag("_"), tag("'"))),
+        many0_count(alt((alphanumeric1, tag("_"), tag("'")))),
     ))(s)
 }
 
