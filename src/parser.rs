@@ -650,4 +650,47 @@ mod tests {
             }
         )
     }
+    #[test]
+    fn test_switch3() {
+        let s = include_str!("../programs/switch3.while");
+        let prog = parse(s).unwrap();
+
+        assert_eq!(
+            prog,
+            Prog {
+                prog_name: ProgName("switch2".into()),
+                input_var: VarName("X".into()),
+                body: Block(vec![Switch {
+                    cond: Var(VarName("X".into())),
+                    cases: vec![
+                        (Num(3), Block(vec![Assign(VarName("Y".into()), Num(3))])),
+                        (
+                            Num(4),
+                            Block(vec![
+                                Assign(VarName("Y".into()), Num(4)),
+                                Assign(VarName("Z".into()), Num(5))
+                            ])
+                        ),
+                        (
+                            Var(VarName("doFor".into())),
+                            Block(vec![
+                                Assign(VarName("Y".into()), Num(1000)),
+                                Assign(VarName("Z".into()), Num(7))
+                            ])
+                        ),
+                        (
+                            Num(5),
+                            Block(vec![If {
+                                cond: Nil,
+                                then: Block(vec![Assign(VarName("Y".into()), Num(9))]),
+                                or: Block(vec![])
+                            }])
+                        )
+                    ],
+                    default: Block(vec![Assign(VarName("Y".into()), Num(137))])
+                }]),
+                output_var: VarName("Y".into())
+            }
+        )
+    }
 }

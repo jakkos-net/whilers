@@ -1,0 +1,12 @@
+
+switch2 read X {
+	switch X {
+		case 3: Y:=3
+		case 4: Y:=4; Z :=5
+		case doFor: Y:=1000 ; Z := 7
+		case 5: if true {Y := 9}
+		default: Y := 137
+	}
+}
+write Y
+
