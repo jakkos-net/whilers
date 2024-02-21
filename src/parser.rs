@@ -310,7 +310,7 @@ pub fn block(s: &str) -> IResult<&str, Block, VerboseError<&str>> {
         delimited(
             delimited(multispace0, tag("{"), multispace0),
             statement_list,
-            delimited(multispace0, tag("}"), multispace0),
+            preceded(multispace0, tag("}")),
         ),
         Block,
     )(s)
@@ -552,6 +552,7 @@ fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::{expression, Expression};
     use crate::parser::{parse, Block, Prog, ProgName, VarName};
 
     use super::Expression::*;
@@ -658,7 +659,7 @@ mod tests {
         assert_eq!(
             prog,
             Prog {
-                prog_name: ProgName("switch2".into()),
+                prog_name: ProgName("switch3".into()),
                 input_var: VarName("X".into()),
                 body: Block(vec![Switch {
                     cond: Var(VarName("X".into())),
@@ -681,7 +682,10 @@ mod tests {
                         (
                             Num(5),
                             Block(vec![If {
-                                cond: Nil,
+                                cond: Expression::Cons(
+                                    Box::new(Expression::Nil),
+                                    Box::new(Expression::Nil)
+                                ),
                                 then: Block(vec![Assign(VarName("Y".into()), Num(9))]),
                                 or: Block(vec![])
                             }])

@@ -1,5 +1,5 @@
 
-switch2 read X {
+switch3 read X {
 	switch X {
 		case 3: Y:=3
 		case 4: Y:=4; Z :=5
