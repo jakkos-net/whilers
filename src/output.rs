@@ -66,13 +66,13 @@ pub fn generate_output(
                 generate_output_with_debug(&output_tree, &store, debug, parse_num_str)
             }
             OutputFormat::ListOfIntegers => {
-                generate_output_with_debug(&output_tree, &store, debug, parse_list_ints)
+                generate_output_with_debug(&output_tree, &store, debug, format_list_ints)
             }
             OutputFormat::NestedListOfIntegers => {
-                generate_output_with_debug(&output_tree, &store, debug, parse_nest_list_ints)
+                generate_output_with_debug(&output_tree, &store, debug, format_nest_list_ints)
             }
             OutputFormat::NestedListOfAtoms => {
-                generate_output_with_debug(&output_tree, &store, debug, parse_nest_list_atoms)
+                generate_output_with_debug(&output_tree, &store, debug, format_nest_list_atoms)
             }
             OutputFormat::ProgramAsData => match prog_to_core(main_prog, progs) {
                 Ok(prog) => Output::Text(unparse_prog(&prog)),
@@ -299,7 +299,7 @@ pub fn num_to_num_or_atom_str(n: usize) -> String {
 }
 
 // there is probably a better way to do these functions with iterators
-pub fn parse_list_f(mut tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
+pub fn format_list_f(mut tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
     let mut res = vec![];
     while let NilTree::Node { left, right } = tree {
         res.push(f(left));
@@ -308,22 +308,22 @@ pub fn parse_list_f(mut tree: &NilTree, f: impl Fn(&NilTree) -> String) -> Strin
     format!("[{}]", res.join(","))
 }
 
-pub fn parse_list_ints(tree: &NilTree) -> String {
-    parse_list_f(tree, parse_num_str)
+pub fn format_list_ints(tree: &NilTree) -> String {
+    format_list_f(tree, parse_num_str)
 }
 
-pub fn parse_nest_list_ints(tree: &NilTree) -> String {
-    parse_list_f(tree, |tree| {
+pub fn format_nest_list_ints(tree: &NilTree) -> String {
+    format_list_f(tree, |tree| {
         if let Ok(_) = parse_num(tree) {
             parse_num_str(tree)
         } else {
-            parse_nest_list_ints(tree)
+            format_nest_list_ints(tree)
         }
     })
 }
 
-pub fn parse_nest_list_atoms(tree: &NilTree) -> String {
-    let s = parse_nest_list_ints(tree);
+pub fn format_nest_list_atoms(tree: &NilTree) -> String {
+    let s = format_nest_list_ints(tree);
     let re = Regex::new(r"\[\s*(\d*)\s*,").unwrap();
     re.replace_all(&s, |x: &Captures<'_>| {
         format!(
