@@ -1,5 +1,6 @@
 use egui::{
-    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, TextEdit, TextStyle, Ui,
+    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, Style, TextEdit, TextStyle, Ui,
+    Visuals,
 };
 
 use indexmap::IndexMap;
@@ -79,6 +80,7 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 if ui.small_button("Reset").clicked() {
                     *state = EditorState::default();
                     ctx.memory_mut(|m| *m = Default::default());
+                    ctx.set_style(style());
                 }
             });
     });
@@ -308,5 +310,12 @@ fn output_ui(ui: &mut Ui, state: &mut EditorState) {
         Output::None => {
             ui.label("No output. Click run to generate an output!");
         }
+    }
+}
+
+pub fn style() -> Style {
+    Style {
+        visuals: Visuals::light(),
+        ..Default::default()
     }
 }
