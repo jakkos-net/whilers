@@ -452,6 +452,7 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
         map(tag("false"), |_| Expression::Nil),
         map(var_name, Expression::Var),
         atom_expr,
+        tree_literal_expr,
     ))(s)
 }
 
@@ -521,6 +522,22 @@ fn atom_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map_res(preceded(tag("@"), alt((alpha1, tag(":=")))), |atom| {
         Atom::from_str(format!("@{atom}").as_str()).map(|atom| num_to_core(atom as u8 as usize))
     })(s)
+}
+
+fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    alt((
+        map(tag("nil"), |_| Expression::Nil),
+        map(
+            tuple((
+                tag("<"),
+                tree_literal_expr,
+                tag("."),
+                tree_literal_expr,
+                tag(">"),
+            )),
+            |(_, l, _, r, _)| Expression::Cons(Box::new(l), Box::new(r)),
+        ),
+    ))(s)
 }
 
 #[cfg(test)]
