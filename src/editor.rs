@@ -102,8 +102,7 @@ fn title_ui(ui: &mut Ui) {
             "github.com/jakkos-net/whilers",
             "https://www.github.com/jakkos-net/whilers",
         );
-    });
-    ui.horizontal(|ui| {
+        ui.add_space(10.0);
         ui.label("Syntax highlighting rules:");
         ui.hyperlink_to(
             "github.com/tobydennison/WHILE-Syntax-Highlighter",
@@ -177,23 +176,21 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
         return;
     }
 
-    ScrollArea::both().id_source("code").show(ui, |ui| {
-        if let Some(tab) = state.tabs.get_mut(state.active_tab_id) {
-            ui.add(
-                TextEdit::multiline(&mut tab.code)
-                    .font(TextStyle::Monospace)
-                    .code_editor()
-                    .desired_rows(20)
-                    .lock_focus(true)
-                    .desired_width(f32::INFINITY)
-                    .layouter(&mut layouter()),
-            );
+    if let Some(tab) = state.tabs.get_mut(state.active_tab_id) {
+        ui.add(
+            TextEdit::multiline(&mut tab.code)
+                .font(TextStyle::Monospace)
+                .code_editor()
+                .desired_rows(10)
+                .lock_focus(true)
+                .desired_width(f32::INFINITY)
+                .layouter(&mut layouter()),
+        );
 
-            tab.update_title();
-        } else {
-            ui.label("Selected source code file doesn't exist!");
-        }
-    });
+        tab.update_title();
+    } else {
+        ui.label("Selected source code file doesn't exist!");
+    }
 }
 
 fn run_ui(ui: &mut Ui, state: &mut EditorState) {
@@ -295,23 +292,21 @@ fn run(state: &mut EditorState, output_format: OutputFormat) {
 fn output_ui(ui: &mut Ui, state: &mut EditorState) {
     ui.heading("Output");
     let output = &state.output;
-    ScrollArea::both().id_source("output").show(ui, |ui| {
-        match output {
-            Output::Text(str) | Output::Error(str) => {
-                // todo_minor remove temp
-                let mut temp = str.to_string();
-                ui.add(
-                    TextEdit::multiline(&mut temp)
-                        .font(TextStyle::Monospace)
-                        .code_editor()
-                        .desired_rows(10)
-                        .desired_width(f32::INFINITY)
-                        .layouter(&mut layouter()),
-                );
-            }
-            Output::None => {
-                ui.label("No output. Click run to generate an output!");
-            }
+    match output {
+        Output::Text(str) | Output::Error(str) => {
+            // todo_minor remove temp
+            let mut temp = str.to_string();
+            ui.add(
+                TextEdit::multiline(&mut temp)
+                    .font(TextStyle::Monospace)
+                    .code_editor()
+                    .desired_rows(5)
+                    .desired_width(f32::INFINITY)
+                    .layouter(&mut layouter()),
+            );
         }
-    });
+        Output::None => {
+            ui.label("No output. Click run to generate an output!");
+        }
+    }
 }
