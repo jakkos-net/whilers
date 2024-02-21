@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     output::Variables,
-    parser::{parse, Block, Expression, Prog, ProgName, Statement, VarName},
+    parser::{parse, Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
 };
 
 pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
@@ -20,10 +20,22 @@ pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Re
     Ok(prog)
 }
 pub fn num_to_core(n: usize) -> Expression {
-    match n {
-        0 => Expression::Nil,
-        _ => Expression::Cons(Expression::Nil.into(), num_to_core(n - 1).into()),
+    let mut res = Expression::Nil;
+    for _ in 0..n {
+        res = Expression::Cons(Box::new(Expression::Nil), Box::new(res));
     }
+    res
+}
+
+pub fn num_to_niltree(n: usize) -> NilTree {
+    let mut res = NilTree::Nil;
+    for _ in 0..n {
+        res = NilTree::Node {
+            left: Box::new(NilTree::Nil),
+            right: Box::new(res),
+        };
+    }
+    res
 }
 
 pub fn list_to_core(list: &[Expression]) -> Expression {

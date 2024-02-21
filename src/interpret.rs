@@ -6,7 +6,7 @@ use anyhow::{bail, Context};
 use indexmap::IndexMap;
 
 use crate::{
-    extended_to_core::{list_to_core, num_to_core, switch_to_ifs},
+    extended_to_core::{list_to_core, num_to_niltree, switch_to_ifs},
     parser::{expression, Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
 };
 
@@ -110,7 +110,7 @@ fn eval(expr: &Expression, store: &ExecState) -> NilTree {
         },
         Expression::Nil => NilTree::Nil,
         Expression::Var(var) => store.get(var).clone(),
-        Expression::Num(n) => eval(&num_to_core(*n), store),
+        Expression::Num(n) => num_to_niltree(*n),
         Expression::Bool(b) => match b {
             true => NilTree::Node {
                 left: Box::new(NilTree::Nil),
