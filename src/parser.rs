@@ -367,6 +367,7 @@ fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
         },
     )(s)
 }
+
 fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     map(
         preceded(
@@ -376,25 +377,7 @@ fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
                 delimited(multispace1, expression, multispace0),
                 delimited(
                     pair(tag("{"), multispace0),
-                    pair(
-                        // list of cases
-                        separated_list0(
-                            multispace1,
-                            pair(
-                                delimited(
-                                    tag("case"),
-                                    delimited(multispace1, expression, multispace0),
-                                    tag(":"),
-                                ),
-                                statement_list,
-                            ),
-                        ),
-                        // an optional default
-                        opt(preceded(
-                            tuple((multispace1, tag("default"), multispace0, tag(":"))),
-                            statement_list,
-                        )),
-                    ),
+                    switch_case_list,
                     pair(multispace0, tag("}")),
                 ),
             )),
@@ -409,6 +392,33 @@ fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
         },
     )(s)
 }
+
+fn switch_case_list(
+    s: &str,
+) -> IResult<&str, (Vec<(Expression, Vec<Statement>)>, Option<Vec<Statement>>), VerboseError<&str>>
+{
+    pair(
+        // list of cases
+        separated_list0(multispace1, switch_case),
+        // an optional default
+        opt(preceded(
+            tuple((multispace1, tag("default"), multispace0, tag(":"))),
+            statement_list,
+        )),
+    )(s)
+}
+
+fn switch_case(s: &str) -> IResult<&str, (Expression, Vec<Statement>), VerboseError<&str>> {
+    pair(
+        delimited(
+            tag("case"),
+            delimited(multispace1, expression, multispace0),
+            tag(":"),
+        ),
+        statement_list,
+    )(s)
+}
+
 fn macro_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     map(
         separated_pair(
