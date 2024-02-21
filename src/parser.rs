@@ -477,6 +477,7 @@ fn tl_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
         Expression::Tl(e.into())
     })(s)
 }
+
 fn cons_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map(
         preceded(
@@ -489,9 +490,11 @@ fn cons_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
         |(e1, e2)| Expression::Cons(e1.into(), e2.into()),
     )(s)
 }
+
 fn num_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map(digit1, |n: &str| Expression::Num(n.parse().unwrap()))(s)
 }
+
 fn list_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map(
         delimited(
