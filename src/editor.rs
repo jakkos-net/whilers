@@ -70,7 +70,6 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 let spacing = 15.0;
                 title_ui(ui);
                 code_tabs_ui(ctx, ui, state);
-                ui.separator();
                 run_ui(ui, state);
                 ui.add_space(spacing);
                 convert_ui(ui, state);
@@ -177,7 +176,7 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
         ui.label("No open files, try clicking '+' or importing a file");
         return;
     }
-
+    ui.separator();
     if let Some(tab) = state.tabs.get_mut(state.active_tab_id) {
         ui.add(
             TextEdit::multiline(&mut tab.code)
@@ -193,6 +192,7 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
     } else {
         ui.label("Selected source code file doesn't exist!");
     }
+    ui.separator();
 }
 
 fn run_ui(ui: &mut Ui, state: &mut EditorState) {
@@ -293,6 +293,7 @@ fn run(state: &mut EditorState, output_format: OutputFormat) {
 
 fn output_ui(ui: &mut Ui, state: &mut EditorState) {
     ui.heading("Output");
+    ui.separator();
     let output = &state.output;
     match output {
         Output::Text(str) | Output::Error(str) => {
@@ -311,6 +312,7 @@ fn output_ui(ui: &mut Ui, state: &mut EditorState) {
             ui.label("No output. Click run to generate an output!");
         }
     }
+    ui.separator();
 }
 
 pub fn style() -> Style {
