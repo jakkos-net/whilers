@@ -408,7 +408,7 @@ pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
                 delimited(multispace0, tag(":="), multispace0),
                 separated_pair(
                     delimited(tag("<"), prog_name, tag(">")),
-                    multispace1,
+                    multispace0,
                     expression,
                 ),
             ),
