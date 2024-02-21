@@ -324,101 +324,108 @@ pub fn statement_list(s: &str) -> IResult<&str, Vec<Statement>, VerboseError<&st
 }
 
 pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
-    alt((
-        // Assignment
-        map(
-            pair(
-                var_name,
-                preceded(delimited(multispace0, tag(":="), multispace0), expression),
-            ),
-            |(var_name, expression)| Statement::Assign(var_name, expression),
+    alt((assign_stmt, while_stmt, if_stmt, switch_stmt, macro_stmt))(s)
+}
+
+fn assign_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
+    map(
+        pair(
+            var_name,
+            preceded(delimited(multispace0, tag(":="), multispace0), expression),
         ),
-        // While
-        map(
-            preceded(
-                tag("while"),
-                pair(delimited(multispace1, expression, multispace1), block),
-            ),
-            |(cond, body)| Statement::While { cond, body },
+        |(var_name, expression)| Statement::Assign(var_name, expression),
+    )(s)
+}
+
+fn while_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
+    map(
+        preceded(
+            tag("while"),
+            pair(delimited(multispace1, expression, multispace1), block),
         ),
-        // If Else
-        map(
-            preceded(
-                tag("if"),
-                tuple((
-                    delimited(multispace1, expression, multispace1),
+        |(cond, body)| Statement::While { cond, body },
+    )(s)
+}
+
+fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
+    map(
+        preceded(
+            tag("if"),
+            tuple((
+                delimited(multispace1, expression, multispace1),
+                block,
+                opt(preceded(
+                    delimited(multispace0, tag("else"), multispace0),
                     block,
-                    opt(preceded(
-                        delimited(multispace0, tag("else"), multispace0),
-                        block,
-                    )),
                 )),
-            ),
-            |(cond, then, or)| Statement::If {
-                cond,
-                then,
-                or: or.unwrap_or(Block(vec![])),
-            },
+            )),
         ),
-        // Switch
-        map(
-            preceded(
-                tag("switch"),
-                tuple((
-                    // the condition
-                    delimited(multispace1, expression, multispace0),
-                    delimited(
-                        pair(tag("{"), multispace0),
-                        pair(
-                            // list of cases
-                            separated_list0(
-                                multispace1,
-                                pair(
-                                    delimited(
-                                        tag("case"),
-                                        delimited(multispace1, expression, multispace0),
-                                        tag(":"),
-                                    ),
-                                    statement_list,
+        |(cond, then, or)| Statement::If {
+            cond,
+            then,
+            or: or.unwrap_or(Block(vec![])),
+        },
+    )(s)
+}
+fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
+    map(
+        preceded(
+            tag("switch"),
+            tuple((
+                // the condition
+                delimited(multispace1, expression, multispace0),
+                delimited(
+                    pair(tag("{"), multispace0),
+                    pair(
+                        // list of cases
+                        separated_list0(
+                            multispace1,
+                            pair(
+                                delimited(
+                                    tag("case"),
+                                    delimited(multispace1, expression, multispace0),
+                                    tag(":"),
                                 ),
-                            ),
-                            // an optional default
-                            opt(preceded(
-                                tuple((multispace1, tag("default"), multispace0, tag(":"))),
                                 statement_list,
-                            )),
+                            ),
                         ),
-                        pair(multispace0, tag("}")),
+                        // an optional default
+                        opt(preceded(
+                            tuple((multispace1, tag("default"), multispace0, tag(":"))),
+                            statement_list,
+                        )),
                     ),
-                )),
-            ),
-            |(cond, (cases, default))| Statement::Switch {
-                cond,
-                cases: cases
-                    .into_iter()
-                    .map(|(expr, stmts)| (expr, Block(stmts)))
-                    .collect::<Vec<_>>(),
-                default: default.map(Block).unwrap_or(Block(vec![])),
-            },
-        ),
-        // Macro
-        map(
-            separated_pair(
-                var_name,
-                delimited(multispace0, tag(":="), multispace0),
-                separated_pair(
-                    delimited(tag("<"), prog_name, tag(">")),
-                    multispace0,
-                    expression,
+                    pair(multispace0, tag("}")),
                 ),
-            ),
-            |(var, (prog, input))| Statement::Macro {
-                var,
-                prog_name: prog,
-                input_expr: input,
-            },
+            )),
         ),
-    ))(s)
+        |(cond, (cases, default))| Statement::Switch {
+            cond,
+            cases: cases
+                .into_iter()
+                .map(|(expr, stmts)| (expr, Block(stmts)))
+                .collect::<Vec<_>>(),
+            default: default.map(Block).unwrap_or(Block(vec![])),
+        },
+    )(s)
+}
+fn macro_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
+    map(
+        separated_pair(
+            var_name,
+            delimited(multispace0, tag(":="), multispace0),
+            separated_pair(
+                delimited(tag("<"), prog_name, tag(">")),
+                multispace0,
+                expression,
+            ),
+        ),
+        |(var, (prog, input))| Statement::Macro {
+            var,
+            prog_name: prog,
+            input_expr: input,
+        },
+    )(s)
 }
 
 // The grammar for equals is left-recursive: EXPR -> EXPR = EXPR
@@ -426,75 +433,91 @@ pub fn statement(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
 // So we break up the expression into expression and not_equals_expression
 // and define equals as EXPR -> NOT_EQUALS_EXPR = EXPR
 pub fn expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    alt((
-        // Equals
-        map(
-            separated_pair(
-                non_equality_expression,
-                delimited(multispace0, tag("="), multispace0),
-                expression,
-            ),
-            |(e1, e2)| Expression::Eq(Box::new(e1), Box::new(e2)),
-        ),
-        non_equality_expression,
-    ))(s)
+    alt((equality_expr, non_equality_expression))(s)
 }
 
 pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     alt((
-        // Hd
-        map(preceded(pair(tag("hd"), multispace1), expression), |e| {
-            Expression::Hd(e.into())
-        }),
-        // Tl
-        map(preceded(pair(tag("tl"), multispace1), expression), |e| {
-            Expression::Tl(e.into())
-        }),
-        // Cons
-        map(
-            preceded(
-                tag("cons"),
-                pair(
-                    preceded(multispace1, expression),
-                    preceded(multispace1, expression),
-                ),
-            ),
-            |(e1, e2)| Expression::Cons(e1.into(), e2.into()),
-        ),
-        // Lists
-        map(
-            delimited(
-                terminated(tag("["), multispace0),
-                separated_list0(tag(","), delimited(multispace0, expression, multispace0)),
-                preceded(multispace0, tag("]")),
-            ),
-            |v| list_to_core(&v[..]),
-        ),
-        // Brackets
-        map(
-            delimited(
-                pair(tag("("), multispace0),
-                expression,
-                pair(multispace0, tag(")")),
-            ),
-            |expr| expr,
-        ),
-        // Nil
+        hd_expr,
+        tl_expr,
+        cons_expr,
+        num_expr,
+        brackets_expr,
+        list_expr,
         map(tag("nil"), |_| Expression::Nil),
         // Bools
         map(tag("true"), |_| {
             Expression::Cons(Expression::Nil.into(), Expression::Nil.into())
         }),
         map(tag("false"), |_| Expression::Nil),
-        // Atoms
-        map_res(preceded(tag("@"), alt((alpha1, tag(":=")))), |atom| {
-            Atom::from_str(format!("@{atom}").as_str()).map(|atom| num_to_core(atom as u8 as usize))
-        }),
-        // Numbers
-        map(digit1, |n: &str| Expression::Num(n.parse().unwrap())),
-        // Variables
         map(var_name, Expression::Var),
+        atom_expr,
     ))(s)
+}
+
+fn equality_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(
+        separated_pair(
+            non_equality_expression,
+            delimited(multispace0, tag("="), multispace0),
+            expression,
+        ),
+        |(e1, e2)| Expression::Eq(Box::new(e1), Box::new(e2)),
+    )(s)
+}
+
+fn hd_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(preceded(pair(tag("hd"), multispace1), expression), |e| {
+        Expression::Hd(e.into())
+    })(s)
+}
+
+fn tl_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(preceded(pair(tag("tl"), multispace1), expression), |e| {
+        Expression::Tl(e.into())
+    })(s)
+}
+fn cons_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(
+        preceded(
+            tag("cons"),
+            pair(
+                preceded(multispace1, expression),
+                preceded(multispace1, expression),
+            ),
+        ),
+        |(e1, e2)| Expression::Cons(e1.into(), e2.into()),
+    )(s)
+}
+fn num_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(digit1, |n: &str| Expression::Num(n.parse().unwrap()))(s)
+}
+fn list_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(
+        delimited(
+            terminated(tag("["), multispace0),
+            separated_list0(tag(","), delimited(multispace0, expression, multispace0)),
+            preceded(multispace0, tag("]")),
+        ),
+        |v| list_to_core(&v[..]),
+    )(s)
+}
+
+fn brackets_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map(
+        delimited(
+            pair(tag("("), multispace0),
+            expression,
+            pair(multispace0, tag(")")),
+        ),
+        |expr| expr,
+    )(s)
+}
+
+fn atom_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    map_res(preceded(tag("@"), alt((alpha1, tag(":=")))), |atom| {
+        Atom::from_str(format!("@{atom}").as_str()).map(|atom| num_to_core(atom as u8 as usize))
+    })(s)
 }
 
 #[cfg(test)]
