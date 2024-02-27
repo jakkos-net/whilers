@@ -229,6 +229,29 @@ impl Display for NilTree {
     }
 }
 
+// impl Drop for NilTree {
+//     fn drop(&mut self) {
+//         match self {
+//             Self::Nil => {}
+//             Self::Node { left, right } => {
+//                 let mut stack = vec![
+//                     std::mem::replace(&mut **left, Self::Nil),
+//                     std::mem::replace(&mut **right, Self::Nil),
+//                 ];
+//                 while let Some(mut node) = stack.pop() {
+//                     match &mut node {
+//                         Self::Nil => {}
+//                         Self::Node { left, right } => {
+//                             stack.push(std::mem::replace(&mut **left, Self::Nil));
+//                             stack.push(std::mem::replace(&mut **right, Self::Nil));
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
+
 pub fn parse(s: &str) -> anyhow::Result<Prog> {
     let s = remove_comments(s);
     match prog(&s) {
@@ -552,7 +575,8 @@ fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{expression, Expression};
+    use crate::extended_to_core::num_to_niltree;
+    use crate::parser::Expression;
     use crate::parser::{parse, Block, Prog, ProgName, VarName};
 
     use super::Expression::*;
@@ -696,5 +720,12 @@ mod tests {
                 output_var: VarName("Y".into())
             }
         )
+    }
+
+    #[test]
+    fn test_stack_overflow() {
+        let n = 1_000_000;
+        let n = num_to_niltree(n);
+        let _ = n.clone();
     }
 }
