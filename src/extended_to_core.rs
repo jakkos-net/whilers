@@ -3,8 +3,10 @@ use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 
 use crate::{
-    output::Variables,
-    parser::{parse, Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
+    lang::{Block, Expression, Prog, ProgName, Statement},
+    niltree::NilTree,
+    parser::parse,
+    variables::{VarName, Variables},
 };
 
 pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
@@ -19,6 +21,7 @@ pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Re
     prog = macros_to_core(&prog, &EQUALG_PROGRAM)?;
     Ok(prog)
 }
+
 pub fn num_to_core(n: usize) -> Expression {
     let mut res = Expression::Nil;
     for _ in 0..n {

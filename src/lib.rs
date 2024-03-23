@@ -1,6 +1,10 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
+mod lang;
+mod niltree;
+mod prog_as_data;
+mod variables;
 pub use app::App;
 pub mod atoms;
 pub mod editor;

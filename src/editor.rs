@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     highlight::layouter,
     interpret::input,
+    lang::{Prog, ProgName},
     output::{generate_output, Output, OutputFormat},
-    parser::{get_prog_name_string_fast, parse, Prog, ProgName},
+    parser::{get_prog_name_string_fast, parse},
 };
 
 #[derive(Serialize, Deserialize)]

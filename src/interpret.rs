@@ -7,7 +7,10 @@ use indexmap::IndexMap;
 
 use crate::{
     extended_to_core::{list_to_core, num_to_niltree, switch_to_ifs},
-    parser::{expression, Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
+    lang::{Block, Expression, Prog, ProgName, Statement},
+    niltree::NilTree,
+    parser::expression,
+    variables::VarName,
 };
 
 const MAX_EXEC_STEPS: u32 = 1_000_000;
@@ -95,25 +98,26 @@ fn exec(
 }
 
 fn eval(expr: &Expression, store: &ExecState) -> NilTree {
+    use Expression as E;
     match expr {
-        Expression::Cons(e1, e2) => NilTree::Node {
+        E::Cons(e1, e2) => NilTree::Node {
             left: eval(e1, store).into(),
             right: eval(e2, store).into(),
         },
-        Expression::Hd(e) => eval(e, store).hd(),
-        Expression::Tl(e) => eval(e, store).tl(),
-        Expression::Nil => NilTree::Nil,
-        Expression::Var(var) => store.get(var).clone(),
-        Expression::Num(n) => num_to_niltree(*n),
-        Expression::Bool(b) => match b {
+        E::Hd(e) => eval(e, store).hd(),
+        E::Tl(e) => eval(e, store).tl(),
+        E::Nil => NilTree::Nil,
+        E::Var(var) => store.get(var).clone(),
+        E::Num(n) => num_to_niltree(*n),
+        E::Bool(b) => match b {
             true => NilTree::Node {
                 left: Box::new(NilTree::Nil),
                 right: Box::new(NilTree::Nil),
             },
             false => NilTree::Nil,
         },
-        Expression::List(v) => eval(&list_to_core(&v[..]), store),
-        Expression::Eq(a, b) => eval(&Expression::Bool(eval(a, store) == eval(b, store)), store),
+        E::List(v) => eval(&list_to_core(&v[..]), store),
+        E::Eq(a, b) => eval(&E::Bool(eval(a, store) == eval(b, store)), store),
     }
 }
 
@@ -197,7 +201,8 @@ mod tests {
 
     use crate::{
         interpret::{eval, input, ExecState},
-        parser::{expression, parse, ProgName},
+        lang::ProgName,
+        parser::{expression, parse},
     };
 
     use super::interpret;
