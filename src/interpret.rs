@@ -100,14 +100,8 @@ fn eval(expr: &Expression, store: &ExecState) -> NilTree {
             left: eval(e1, store).into(),
             right: eval(e2, store).into(),
         },
-        Expression::Hd(e) => match eval(e, store) {
-            NilTree::Nil => NilTree::Nil,
-            NilTree::Node { left, right: _ } => *left,
-        },
-        Expression::Tl(e) => match eval(e, store) {
-            NilTree::Nil => NilTree::Nil,
-            NilTree::Node { left: _, right } => *right,
-        },
+        Expression::Hd(e) => eval(e, store).hd(),
+        Expression::Tl(e) => eval(e, store).tl(),
         Expression::Nil => NilTree::Nil,
         Expression::Var(var) => store.get(var).clone(),
         Expression::Num(n) => num_to_niltree(*n),
@@ -150,12 +144,13 @@ impl ExecState {
             .push((prog_name.clone(), var.clone(), data.clone()));
     }
 
-    pub fn get(&self, var: &VarName) -> &NilTree {
+    // Ideally this would return a reference but it doens't like it due to NilTree having a drop impl
+    pub fn get(&self, var: &VarName) -> NilTree {
         let (_prog_name, store) = self
             .macro_stack
             .last()
             .expect("Macro stack should never be empty!");
-        store.get(var).unwrap_or(&NilTree::Nil)
+        store.get(var).unwrap_or(&NilTree::Nil).clone()
     }
 
     pub fn get_history(&self) -> &Vec<(ProgName, VarName, NilTree)> {
