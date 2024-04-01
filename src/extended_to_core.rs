@@ -38,6 +38,13 @@ pub fn num_to_niltree(n: usize) -> NilTree {
     }
 }
 
+pub fn list_to_cons(list: &[Expression]) -> Expression {
+    match list {
+        [] => Expression::Nil,
+        v => Expression::Cons(Box::new(v[0].clone()), list_to_cons(&v[1..]).into()),
+    }
+}
+
 pub fn list_to_core(list: &[Expression]) -> Expression {
     match list {
         [] => Expression::Nil,

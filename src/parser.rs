@@ -20,7 +20,7 @@ use regex::Regex;
 
 use crate::{
     atoms::Atom,
-    extended_to_core::{list_to_core, num_to_core},
+    extended_to_core::num_to_core,
     lang::{Block, Expression, Prog, ProgName, Statement},
     variables::VarName,
 };
@@ -308,7 +308,7 @@ fn list_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
             separated_list0(tag(","), delimited(multispace0, expression, multispace0)),
             preceded(multispace0, tag("]")),
         ),
-        |v| list_to_core(&v[..]),
+        |v| Expression::List(v),
     )(s)
 }
 

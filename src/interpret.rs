@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use regex::Regex;
 
 use crate::{
-    extended_to_core::{list_to_core, num_to_niltree, prog_to_core, switch_to_ifs},
+    extended_to_core::{list_to_cons, num_to_niltree, prog_to_core, switch_to_ifs},
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::{cons, NilTree},
     parser::expression,
@@ -112,7 +112,7 @@ fn eval(expr: &Expression, store: &ExecState) -> NilTree {
             true => cons(NilTree::Nil, NilTree::Nil),
             false => NilTree::Nil,
         },
-        E::List(v) => eval(&list_to_core(&v[..]), store),
+        E::List(v) => eval(&list_to_cons(&v[..]), store),
         E::Eq(a, b) => eval(&E::Bool(eval(a, store) == eval(b, store)), store),
     }
 }
