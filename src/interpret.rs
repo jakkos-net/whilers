@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use anyhow::{bail, Context};
-use egui::ahash::HashSet;
 use indexmap::IndexMap;
 use regex::Regex;
 
@@ -12,7 +11,7 @@ use crate::{
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::NilTree,
     parser::expression,
-    prog_as_data::{self, unparse_prog},
+    prog_as_data::unparse_prog,
     variables::VarName,
 };
 
