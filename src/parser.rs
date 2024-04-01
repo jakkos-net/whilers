@@ -1,6 +1,6 @@
 // This module parses plain-text source code into While program ASTs
 
-use std::{fmt::Display, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::bail;
 use nom::{
@@ -20,214 +20,10 @@ use regex::Regex;
 
 use crate::{
     atoms::Atom,
-    extended_to_core::{list_to_core, num_to_core},
-    utils::indent,
+    extended_to_core::num_to_core,
+    lang::{Block, Expression, Prog, ProgName, Statement},
+    variables::VarName,
 };
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Prog {
-    pub prog_name: ProgName,
-    pub input_var: VarName,
-    pub body: Block,
-    pub output_var: VarName,
-}
-
-impl Display for Prog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        format!(
-            "{} read {} {} write {}",
-            self.prog_name, self.input_var, self.body, self.output_var
-        )
-        .fmt(f)
-    }
-}
-
-impl Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        format!(
-            "{{\n{}\n}}",
-            self.0
-                .iter()
-                .map(|s| indent(s.to_string().as_str()))
-                .collect::<Vec<_>>()
-                .join(";\n")
-        )
-        .fmt(f)
-    }
-}
-
-impl Display for Statement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Statement::Assign(var, e) => format!("{var} := {e}"),
-            Statement::While { cond, body } => format!("while {cond} {body}"),
-            Statement::If { cond, then, or } => {
-                format!(
-                    "if {cond} {then}{}",
-                    // skip the else clause if it's empty
-                    if or.0.is_empty() {
-                        "".into()
-                    } else {
-                        format!(" else {or}")
-                    }
-                )
-            }
-            Statement::Macro {
-                var,
-                prog_name: prog,
-                input_expr: input,
-            } => format!("{var} := <{prog}> {input}"),
-            Statement::Switch {
-                cond,
-                cases,
-                default,
-            } => {
-                let cases = cases
-                    .iter()
-                    .map(|(case, body)| {
-                        let statements = body
-                            .0
-                            .iter()
-                            .map(|stmt| stmt.to_string())
-                            .collect::<Vec<_>>()
-                            .join(";\n");
-                        format!("case {case}:\n{statements}")
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                let default = format!(
-                    "default:\n{}",
-                    default
-                        .0
-                        .iter()
-                        .map(|stmt| stmt.to_string())
-                        .collect::<Vec<_>>()
-                        .join(";\n")
-                );
-                format!("switch {cond} {{\n{cases}\n{default}}}")
-            }
-        }
-        .fmt(f)
-    }
-}
-
-impl Display for Expression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Expression::Cons(e1, e2) => format!("cons {e1} {e2}"),
-            Expression::Hd(e) => format!("hd {e}"),
-            Expression::Tl(e) => format!("tl {e}"),
-            Expression::Nil => "nil".into(),
-            Expression::Var(var) => var.to_string(),
-            Expression::Num(n) => n.to_string(),
-            Expression::Bool(b) => b.to_string(),
-            Expression::List(v) => format!(
-                "[{}]",
-                v.iter()
-                    .map(|expr| expr.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Expression::Eq(a, b) => format!("{a} = {b}"),
-        }
-        .fmt(f)
-    }
-}
-#[derive(Debug, PartialEq, Eq, Clone, std::hash::Hash)]
-pub struct VarName(pub String);
-
-impl Display for VarName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, std::hash::Hash)]
-pub struct ProgName(pub String);
-
-impl Display for ProgName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Block(pub Vec<Statement>);
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Statement {
-    Assign(VarName, Expression),
-    While {
-        cond: Expression,
-        body: Block,
-    },
-    If {
-        cond: Expression,
-        then: Block,
-        or: Block,
-    },
-    Macro {
-        var: VarName,
-        prog_name: ProgName,
-        input_expr: Expression,
-    },
-    Switch {
-        cond: Expression,
-        cases: Vec<(Expression, Block)>,
-        default: Block,
-    },
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Expression {
-    Cons(Box<Expression>, Box<Expression>),
-    Hd(Box<Expression>),
-    Tl(Box<Expression>),
-    Nil,
-    Var(VarName),
-    Num(usize),
-    Bool(bool),
-    List(Vec<Expression>),
-    Eq(Box<Expression>, Box<Expression>),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum NilTree {
-    Nil,
-    Node {
-        left: Box<NilTree>,
-        right: Box<NilTree>,
-    },
-}
-
-impl Display for NilTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        enum Item<'a> {
-            Node(&'a NilTree),
-            Char(char),
-        }
-
-        let mut stack = vec![Item::Node(self)];
-        while let Some(item) = stack.pop() {
-            match item {
-                Item::Node(node) => match node {
-                    NilTree::Nil => {
-                        "nil".fmt(f)?;
-                    }
-                    NilTree::Node { left, right } => {
-                        stack.push(Item::Char('>'));
-                        stack.push(Item::Node(right));
-                        stack.push(Item::Char('.'));
-                        stack.push(Item::Node(left));
-                        stack.push(Item::Char('<'));
-                    }
-                },
-                Item::Char(c) => c.fmt(f)?,
-            }
-        }
-        Ok(())
-    }
-}
 
 pub fn parse(s: &str) -> anyhow::Result<Prog> {
     let s = remove_comments(s);
@@ -455,7 +251,6 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
         brackets_expr,
         list_expr,
         map(tag("nil"), |_| Expression::Nil),
-        // Bools
         map(tag("true"), |_| {
             Expression::Cons(Expression::Nil.into(), Expression::Nil.into())
         }),
@@ -513,7 +308,7 @@ fn list_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
             separated_list0(tag(","), delimited(multispace0, expression, multispace0)),
             preceded(multispace0, tag("]")),
         ),
-        |v| list_to_core(&v[..]),
+        |v| Expression::List(v),
     )(s)
 }
 
@@ -552,7 +347,8 @@ fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{expression, Expression};
+    use crate::extended_to_core::num_to_niltree;
+    use crate::parser::Expression;
     use crate::parser::{parse, Block, Prog, ProgName, VarName};
 
     use super::Expression::*;
@@ -696,5 +492,13 @@ mod tests {
                 output_var: VarName("Y".into())
             }
         )
+    }
+
+    #[test]
+    fn test_stack_overflow() {
+        let n = 1_000_000;
+        let n = num_to_niltree(n);
+        let m = n.clone();
+        let _ = m == n;
     }
 }

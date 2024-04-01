@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     highlight::layouter,
     interpret::input,
+    lang::{Prog, ProgName},
     output::{generate_output, Output, OutputFormat},
-    parser::{get_prog_name_string_fast, parse, Prog, ProgName},
+    parser::{get_prog_name_string_fast, parse},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -284,7 +285,7 @@ fn run(state: &mut EditorState, output_format: OutputFormat) {
 
     // try and get the current tab's program and run it
     if let Some((_, prog)) = all_progs.get_index(state.active_tab_id) {
-        state.output = match input(&state.input) {
+        state.output = match input(&state.input, &all_progs) {
             Ok(input) => generate_output(&prog, &input, &all_progs, &output_format, state.debug),
             Err(e) => Output::Error(e.to_string()),
         }

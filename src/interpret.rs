@@ -4,10 +4,15 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context};
 use indexmap::IndexMap;
+use regex::Regex;
 
 use crate::{
-    extended_to_core::{list_to_core, num_to_core, switch_to_ifs},
-    parser::{expression, Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
+    extended_to_core::{list_to_cons, num_to_niltree, prog_to_core, switch_to_ifs},
+    lang::{Block, Expression, Prog, ProgName, Statement},
+    niltree::{cons, NilTree},
+    parser::expression,
+    prog_as_data::unparse_prog,
+    variables::VarName,
 };
 
 const MAX_EXEC_STEPS: u32 = 1_000_000;
@@ -95,31 +100,20 @@ fn exec(
 }
 
 fn eval(expr: &Expression, store: &ExecState) -> NilTree {
+    use Expression as E;
     match expr {
-        Expression::Cons(e1, e2) => NilTree::Node {
-            left: eval(e1, store).into(),
-            right: eval(e2, store).into(),
-        },
-        Expression::Hd(e) => match eval(e, store) {
-            NilTree::Nil => NilTree::Nil,
-            NilTree::Node { left, right: _ } => *left,
-        },
-        Expression::Tl(e) => match eval(e, store) {
-            NilTree::Nil => NilTree::Nil,
-            NilTree::Node { left: _, right } => *right,
-        },
-        Expression::Nil => NilTree::Nil,
-        Expression::Var(var) => store.get(var).clone(),
-        Expression::Num(n) => eval(&num_to_core(*n), store),
-        Expression::Bool(b) => match b {
-            true => NilTree::Node {
-                left: Box::new(NilTree::Nil),
-                right: Box::new(NilTree::Nil),
-            },
+        E::Cons(e1, e2) => cons(eval(e1, store).into(), eval(e2, store).into()),
+        E::Hd(e) => eval(e, store).hd(),
+        E::Tl(e) => eval(e, store).tl(),
+        E::Nil => NilTree::Nil,
+        E::Var(var) => store.get(var).clone(),
+        E::Num(n) => num_to_niltree(*n),
+        E::Bool(b) => match b {
+            true => cons(NilTree::Nil, NilTree::Nil),
             false => NilTree::Nil,
         },
-        Expression::List(v) => eval(&list_to_core(&v[..]), store),
-        Expression::Eq(a, b) => eval(&Expression::Bool(eval(a, store) == eval(b, store)), store),
+        E::List(v) => eval(&list_to_cons(&v[..]), store),
+        E::Eq(a, b) => eval(&E::Bool(eval(a, store) == eval(b, store)), store),
     }
 }
 
@@ -150,12 +144,13 @@ impl ExecState {
             .push((prog_name.clone(), var.clone(), data.clone()));
     }
 
-    pub fn get(&self, var: &VarName) -> &NilTree {
+    // Ideally this would return a reference but it doens't like it due to NilTree having a drop impl
+    pub fn get(&self, var: &VarName) -> NilTree {
         let (_prog_name, store) = self
             .macro_stack
             .last()
             .expect("Macro stack should never be empty!");
-        store.get(var).unwrap_or(&NilTree::Nil)
+        store.get(var).unwrap_or(&NilTree::Nil).clone()
     }
 
     pub fn get_history(&self) -> &Vec<(ProgName, VarName, NilTree)> {
@@ -190,19 +185,38 @@ impl ExecState {
     }
 }
 
-pub fn input(s: &str) -> anyhow::Result<NilTree> {
-    match expression(s) {
+pub fn input(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<NilTree> {
+    let s = replace_progs_as_data(s, progs)?;
+    match expression(&s) {
         Ok((_, expr)) => Ok(eval(&expr, &ExecState::new(&ProgName("input".into())))),
         Err(e) => bail!("Failed to parse input:\n{:?}", e),
     }
 }
 
+// replace `prog` with the programs as data representation of prog
+fn replace_progs_as_data(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<String> {
+    let prog_as_data_regex = Regex::new("`([A-Za-z0-9][_A-Za-z0-9]*)`").unwrap();
+    let mut s = s.to_string();
+    while let Some(captures) = prog_as_data_regex.captures(&s) {
+        let backticked_prog_name = captures.get(0).unwrap().as_str();
+        let prog_name = ProgName(captures.get(1).unwrap().as_str().to_string());
+        let prog = progs
+            .get(&prog_name)
+            .with_context(|| "`{prog_name}` in input, but that program does not exist!")?;
+        let core_prog = prog_to_core(&prog, progs)?;
+        let prog_as_data = unparse_prog(&core_prog);
+
+        s = s.replace(backticked_prog_name, &prog_as_data);
+    }
+    Ok(s)
+}
 #[cfg(test)]
 mod tests {
 
     use crate::{
         interpret::{eval, input, ExecState},
-        parser::{expression, parse, ProgName},
+        lang::ProgName,
+        parser::{expression, parse},
     };
 
     use super::interpret;
@@ -210,8 +224,9 @@ mod tests {
     #[test]
     pub fn test_add() {
         let prog = parse(include_str!("../programs/add.while")).unwrap();
+        let progs = Default::default();
 
-        let input = input("[3,4]").unwrap();
+        let input = input("[3,4]", &progs).unwrap();
 
         let progs = Default::default();
 
@@ -234,15 +249,21 @@ mod tests {
         let empty_store = ExecState::new(&ProgName("testing".into()));
 
         assert_eq!(
-            interpret(&prog, &input("3").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("3", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("3").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("4").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("4", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("4").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("0").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("0", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("1000").unwrap().1, &empty_store)
         );
     }
@@ -256,19 +277,27 @@ mod tests {
         let empty_store = ExecState::new(&ProgName("testing".into()));
 
         assert_eq!(
-            interpret(&prog, &input("3").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("3", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("3").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("4").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("4", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("4").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("0").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("0", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("1000").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("2").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("2", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("137").unwrap().1, &empty_store)
         );
     }

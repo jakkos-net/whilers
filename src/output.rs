@@ -3,15 +3,16 @@
 use std::fmt::Display;
 
 use anyhow::bail;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use regex::{Captures, Regex};
 
 use crate::{
     atoms::Atom,
     extended_to_core::prog_to_core,
     interpret::{interpret, ExecState},
-    parser::{Block, Expression, NilTree, Prog, ProgName, Statement, VarName},
-    utils::indent,
+    lang::{Prog, ProgName},
+    niltree::NilTree,
+    prog_as_data::unparse_prog,
 };
 
 #[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize, Copy)]
@@ -105,173 +106,17 @@ fn generate_output_with_debug(
     Output::Text(res.join("\n"))
 }
 
-pub fn unparse_prog(prog: &Prog) -> String {
-    let vars = Variables::new(prog);
-    format!(
-        "[{}, {}, {}]",
-        vars.get(&prog.input_var),
-        unparse_block(&prog.body, &vars),
-        vars.get(&prog.output_var)
-    )
-}
-
-pub struct Variables(IndexSet<VarName>);
-
-impl Variables {
-    pub fn new(prog: &Prog) -> Self {
-        let mut vars = Self(Default::default());
-        vars.add(&prog.input_var);
-        vars.add_block(&prog.body);
-        vars.add(&prog.output_var);
-        vars
-    }
-
-    fn add_block(&mut self, block: &Block) {
-        for stmt in &block.0 {
-            match stmt {
-                Statement::Assign(var, expr) => {
-                    self.add(var);
-                    self.add_expr(expr);
-                }
-                Statement::While { cond, body } => {
-                    self.add_expr(cond);
-                    self.add_block(body);
-                }
-                Statement::If { cond, then, or } => {
-                    self.add_expr(cond);
-                    self.add_block(then);
-                    self.add_block(or);
-                }
-                Statement::Macro {
-                    var,
-                    prog_name: _,
-                    input_expr,
-                } => {
-                    self.add(var);
-                    self.add_expr(input_expr)
-                }
-                Statement::Switch {
-                    cond,
-                    cases,
-                    default,
-                } => {
-                    self.add_expr(cond);
-                    for (e, b) in cases {
-                        self.add_expr(e);
-                        self.add_block(b);
-                    }
-                    self.add_block(default);
-                }
-            }
-        }
-    }
-
-    fn add_expr(&mut self, expr: &Expression) {
-        use Expression as E;
-        match expr {
-            E::Cons(e1, e2) | E::Eq(e1, e2) => {
-                self.add_expr(e1);
-                self.add_expr(e2);
-            }
-            E::Hd(e) | E::Tl(e) => self.add_expr(e),
-            E::Var(var) => self.add(var),
-            E::Nil | E::Num(_) | E::Bool(_) => (),
-            E::List(list) => {
-                for e in list {
-                    self.add_expr(e)
-                }
-            }
-        }
-    }
-
-    pub fn add(&mut self, var: &VarName) {
-        if !self.0.contains(var) {
-            self.0.insert(var.clone());
-        }
-    }
-
-    pub fn get(&self, var: &VarName) -> usize {
-        self.0.get_index_of(var).unwrap()
-    }
-
-    pub fn issue_name(&mut self, desired_name: &VarName) -> VarName {
-        if self.0.contains(desired_name) {
-            let alternative_name = VarName(format!("{desired_name}'"));
-            self.issue_name(&alternative_name)
-        } else {
-            self.add(desired_name);
-            desired_name.clone()
-        }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &VarName> {
-        self.0.iter()
-    }
-}
-
-pub fn unparse_block(block: &Block, vars: &Variables) -> String {
-    if block.0.is_empty() {
-        return "[]".into();
-    }
-    format!(
-        "[\n{}\n]",
-        block
-            .0
-            .iter()
-            .map(|stmt| indent(unparse_stmt(stmt, vars).as_str()))
-            .collect::<Vec<_>>()
-            .join(",\n")
-    )
-}
-
-pub fn unparse_stmt(stmt: &Statement, vars: &Variables) -> String {
-    format!(
-        "[{}]",
-        match stmt {
-            Statement::Assign(var, expr) =>
-                format!("@:=, {}, {}", vars.get(var), unparse_expr(expr, vars)),
-            Statement::While { cond, body } => format!(
-                "@while, {}, {}",
-                unparse_expr(cond, vars),
-                unparse_block(body, vars)
-            ),
-            Statement::If { cond, then, or } => format!(
-                "@if, {}, {}, {}",
-                unparse_expr(cond, vars),
-                unparse_block(then, vars),
-                unparse_block(or, vars)
-            ),
-            _ => panic!("Cannot unparse extended While statment: {stmt}"),
-        }
-    )
-}
-
-pub fn unparse_expr(expr: &Expression, vars: &Variables) -> String {
-    format!(
-        "[{}]",
-        match expr {
-            Expression::Cons(e1, e2) => format!(
-                "@cons, {}, {}",
-                unparse_expr(e1, vars),
-                unparse_expr(e2, vars)
-            ),
-            Expression::Hd(e) => format!("@hd, {}", unparse_expr(e, vars)),
-            Expression::Tl(e) => format!("@tl, {}", unparse_expr(e, vars)),
-            Expression::Nil => "@quote, nil".into(),
-            Expression::Var(var) => format!("@var, {}", vars.get(var)),
-            _ => panic!("Cannot unparse extended While expression: {expr} "),
-        }
-    )
-}
-
 pub fn parse_num(tree: &NilTree) -> anyhow::Result<usize> {
-    match tree {
-        NilTree::Nil => Ok(0),
-        NilTree::Node { left, right } if matches!(**left, NilTree::Nil) => {
-            Ok(1 + parse_num(right)?)
+    Ok(match tree {
+        NilTree::Nil => 0,
+        NilTree::List(v) => {
+            if v.iter().all(|x| matches!(x, NilTree::Nil)) {
+                v.len()
+            } else {
+                bail!("NaN")
+            }
         }
-        _ => bail!("NaN"),
-    }
+    })
 }
 
 pub fn parse_num_str(tree: &NilTree) -> String {
@@ -299,11 +144,10 @@ pub fn num_to_num_or_atom_str(n: usize) -> String {
 }
 
 // there is probably a better way to do these functions with iterators
-pub fn format_list_f(mut tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
+pub fn format_list_f(tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
     let mut res = vec![];
-    while let NilTree::Node { left, right } = tree {
-        res.push(f(left));
-        tree = right;
+    if let NilTree::List(v) = tree {
+        v.into_iter().rev().for_each(|nt| res.push(f(&nt)))
     }
     format!("[{}]", res.join(","))
 }

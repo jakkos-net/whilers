@@ -23,6 +23,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             rustToolchain
+            bacon
             gcc
             openssl
             pkg-config

@@ -3,8 +3,10 @@ use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 
 use crate::{
-    output::Variables,
-    parser::{parse, Block, Expression, Prog, ProgName, Statement, VarName},
+    lang::{Block, Expression, Prog, ProgName, Statement},
+    niltree::NilTree,
+    parser::parse,
+    variables::{VarName, Variables},
 };
 
 pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
@@ -19,10 +21,27 @@ pub fn prog_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Re
     prog = macros_to_core(&prog, &EQUALG_PROGRAM)?;
     Ok(prog)
 }
+
 pub fn num_to_core(n: usize) -> Expression {
-    match n {
-        0 => Expression::Nil,
-        _ => Expression::Cons(Expression::Nil.into(), num_to_core(n - 1).into()),
+    let mut res = Expression::Nil;
+    for _ in 0..n {
+        res = Expression::Cons(Box::new(Expression::Nil), Box::new(res));
+    }
+    res
+}
+
+pub fn num_to_niltree(n: usize) -> NilTree {
+    if n == 0 {
+        NilTree::Nil
+    } else {
+        NilTree::List(vec![NilTree::Nil; n])
+    }
+}
+
+pub fn list_to_cons(list: &[Expression]) -> Expression {
+    match list {
+        [] => Expression::Nil,
+        v => Expression::Cons(Box::new(v[0].clone()), list_to_cons(&v[1..]).into()),
     }
 }
 
