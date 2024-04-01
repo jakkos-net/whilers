@@ -3,13 +3,16 @@
 use std::collections::HashMap;
 
 use anyhow::{bail, Context};
+use egui::ahash::HashSet;
 use indexmap::IndexMap;
+use regex::Regex;
 
 use crate::{
-    extended_to_core::{list_to_core, num_to_niltree, switch_to_ifs},
+    extended_to_core::{list_to_core, num_to_niltree, prog_to_core, switch_to_ifs},
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::NilTree,
     parser::expression,
+    prog_as_data::{self, unparse_prog},
     variables::VarName,
 };
 
@@ -189,13 +192,31 @@ impl ExecState {
     }
 }
 
-pub fn input(s: &str) -> anyhow::Result<NilTree> {
-    match expression(s) {
+pub fn input(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<NilTree> {
+    let s = replace_progs_as_data(s, progs)?;
+    match expression(&s) {
         Ok((_, expr)) => Ok(eval(&expr, &ExecState::new(&ProgName("input".into())))),
         Err(e) => bail!("Failed to parse input:\n{:?}", e),
     }
 }
 
+// replace `prog` with the programs as data representation of prog
+fn replace_progs_as_data(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<String> {
+    let prog_as_data_regex = Regex::new("`([A-Za-z0-9][_A-Za-z0-9]*)`").unwrap();
+    let mut s = s.to_string();
+    while let Some(captures) = prog_as_data_regex.captures(&s) {
+        let backticked_prog_name = captures.get(0).unwrap().as_str();
+        let prog_name = ProgName(captures.get(1).unwrap().as_str().to_string());
+        let prog = progs
+            .get(&prog_name)
+            .with_context(|| "`{prog_name}` in input, but that program does not exist!")?;
+        let core_prog = prog_to_core(&prog, progs)?;
+        let prog_as_data = unparse_prog(&core_prog);
+
+        s = s.replace(backticked_prog_name, &prog_as_data);
+    }
+    Ok(s)
+}
 #[cfg(test)]
 mod tests {
 
@@ -210,8 +231,9 @@ mod tests {
     #[test]
     pub fn test_add() {
         let prog = parse(include_str!("../programs/add.while")).unwrap();
+        let progs = Default::default();
 
-        let input = input("[3,4]").unwrap();
+        let input = input("[3,4]", &progs).unwrap();
 
         let progs = Default::default();
 
@@ -234,15 +256,21 @@ mod tests {
         let empty_store = ExecState::new(&ProgName("testing".into()));
 
         assert_eq!(
-            interpret(&prog, &input("3").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("3", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("3").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("4").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("4", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("4").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("0").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("0", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("1000").unwrap().1, &empty_store)
         );
     }
@@ -256,19 +284,27 @@ mod tests {
         let empty_store = ExecState::new(&ProgName("testing".into()));
 
         assert_eq!(
-            interpret(&prog, &input("3").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("3", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("3").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("4").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("4", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("4").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("0").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("0", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("1000").unwrap().1, &empty_store)
         );
         assert_eq!(
-            interpret(&prog, &input("2").unwrap(), &progs).unwrap().0,
+            interpret(&prog, &input("2", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
             eval(&expression("137").unwrap().1, &empty_store)
         );
     }
