@@ -31,14 +31,11 @@ pub fn num_to_core(n: usize) -> Expression {
 }
 
 pub fn num_to_niltree(n: usize) -> NilTree {
-    let mut res = NilTree::Nil;
-    for _ in 0..n {
-        res = NilTree::Node {
-            left: Box::new(NilTree::Nil),
-            right: Box::new(res),
-        };
+    if n == 0 {
+        NilTree::Nil
+    } else {
+        NilTree::List(vec![NilTree::Nil; n])
     }
-    res
 }
 
 pub fn list_to_core(list: &[Expression]) -> Expression {

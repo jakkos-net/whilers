@@ -9,7 +9,7 @@ use regex::Regex;
 use crate::{
     extended_to_core::{list_to_core, num_to_niltree, prog_to_core, switch_to_ifs},
     lang::{Block, Expression, Prog, ProgName, Statement},
-    niltree::NilTree,
+    niltree::{cons, NilTree},
     parser::expression,
     prog_as_data::unparse_prog,
     variables::VarName,
@@ -102,20 +102,14 @@ fn exec(
 fn eval(expr: &Expression, store: &ExecState) -> NilTree {
     use Expression as E;
     match expr {
-        E::Cons(e1, e2) => NilTree::Node {
-            left: eval(e1, store).into(),
-            right: eval(e2, store).into(),
-        },
+        E::Cons(e1, e2) => cons(eval(e1, store).into(), eval(e2, store).into()),
         E::Hd(e) => eval(e, store).hd(),
         E::Tl(e) => eval(e, store).tl(),
         E::Nil => NilTree::Nil,
         E::Var(var) => store.get(var).clone(),
         E::Num(n) => num_to_niltree(*n),
         E::Bool(b) => match b {
-            true => NilTree::Node {
-                left: Box::new(NilTree::Nil),
-                right: Box::new(NilTree::Nil),
-            },
+            true => cons(NilTree::Nil, NilTree::Nil),
             false => NilTree::Nil,
         },
         E::List(v) => eval(&list_to_core(&v[..]), store),

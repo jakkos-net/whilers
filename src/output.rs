@@ -107,13 +107,16 @@ fn generate_output_with_debug(
 }
 
 pub fn parse_num(tree: &NilTree) -> anyhow::Result<usize> {
-    match tree {
-        NilTree::Nil => Ok(0),
-        NilTree::Node { left, right } if matches!(**left, NilTree::Nil) => {
-            Ok(1 + parse_num(right)?)
+    Ok(match tree {
+        NilTree::Nil => 0,
+        NilTree::List(v) => {
+            if v.iter().all(|x| matches!(x, NilTree::Nil)) {
+                v.len()
+            } else {
+                bail!("NaN")
+            }
         }
-        _ => bail!("NaN"),
-    }
+    })
 }
 
 pub fn parse_num_str(tree: &NilTree) -> String {
@@ -141,11 +144,10 @@ pub fn num_to_num_or_atom_str(n: usize) -> String {
 }
 
 // there is probably a better way to do these functions with iterators
-pub fn format_list_f(mut tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
+pub fn format_list_f(tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
     let mut res = vec![];
-    while let NilTree::Node { left, right } = tree {
-        res.push(f(left));
-        tree = right;
+    if let NilTree::List(v) = tree {
+        v.into_iter().rev().for_each(|nt| res.push(f(&nt)))
     }
     format!("[{}]", res.join(","))
 }
