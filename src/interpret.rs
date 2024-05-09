@@ -113,7 +113,7 @@ fn eval(expr: &Expression, store: &ExecState) -> NilTree {
             false => NilTree::Nil,
         },
         E::List(v) => eval(&list_to_cons(&v[..]), store),
-        E::Eq(a, b) => eval(&E::Bool(eval(a, store) == eval(b, store)), store),
+        E::Eq(a, b) => eval(&E::Bool(eval(a, store).equivalent(&eval(b, store))), store),
     }
 }
 

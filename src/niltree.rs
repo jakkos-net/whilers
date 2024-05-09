@@ -30,9 +30,18 @@ impl NilTree {
                 (h, t)
             }
             NilTree::Num(n) => match n {
-                0 => (NilTree::Nil, NilTree::Nil),
+                0 | 1 => (NilTree::Nil, NilTree::Nil),
                 n => (NilTree::Nil, NilTree::Num(n - 1)),
             },
+        }
+    }
+    pub fn equivalent(&self, other: &NilTree) -> bool {
+        use NilTree as N;
+        match (self, other) {
+            (N::Num(n), N::Nil) | (N::Nil, N::Num(n)) => *n == 0,
+            (N::Num(a), N::Num(b)) => a == b,
+            (N::Num(n), x) | (x, N::Num(n)) => &num_to_nils(*n) == x,
+            (a, b) => a == b,
         }
     }
 }
@@ -44,7 +53,10 @@ pub fn cons(a: NilTree, b: NilTree) -> NilTree {
             v.push(a);
             NilTree::List(v)
         }
-        NilTree::Num(n) => cons(a, num_to_nils(n)),
+        NilTree::Num(n) => match a {
+            NilTree::Nil => NilTree::Num(n + 1),
+            a => cons(a, num_to_nils(n)),
+        },
     }
 }
 
