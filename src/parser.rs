@@ -20,7 +20,6 @@ use regex::Regex;
 
 use crate::{
     atoms::Atom,
-    extended_to_core::num_to_core,
     lang::{Block, Expression, Prog, ProgName, Statement},
     variables::VarName,
 };
@@ -325,7 +324,7 @@ fn brackets_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 fn atom_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map_res(preceded(tag("@"), alt((alpha1, tag(":=")))), |atom| {
-        Atom::from_str(format!("@{atom}").as_str()).map(|atom| num_to_core(atom as u8 as usize))
+        Atom::from_str(format!("@{atom}").as_str()).map(|atom| Expression::Num(atom as u8 as usize))
     })(s)
 }
 
@@ -347,7 +346,7 @@ fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::extended_to_core::num_to_niltree;
+    use crate::extended_to_core::num_to_nils;
     use crate::parser::Expression;
     use crate::parser::{parse, Block, Prog, ProgName, VarName};
 
@@ -497,7 +496,7 @@ mod tests {
     #[test]
     fn test_stack_overflow() {
         let n = 1_000_000;
-        let n = num_to_niltree(n);
+        let n = num_to_nils(n);
         let m = n.clone();
         let _ = m == n;
     }

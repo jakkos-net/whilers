@@ -1,9 +1,12 @@
 use std::fmt::Display;
 
+use crate::extended_to_core::num_to_nils;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum NilTree {
     Nil,
     List(Vec<NilTree>),
+    Num(usize),
 }
 
 impl NilTree {
@@ -26,6 +29,10 @@ impl NilTree {
 
                 (h, t)
             }
+            NilTree::Num(n) => match n {
+                0 => (NilTree::Nil, NilTree::Nil),
+                n => (NilTree::Nil, NilTree::Num(n - 1)),
+            },
         }
     }
 }
@@ -37,6 +44,7 @@ pub fn cons(a: NilTree, b: NilTree) -> NilTree {
             v.push(a);
             NilTree::List(v)
         }
+        NilTree::Num(n) => cons(a, num_to_nils(n)),
     }
 }
 
@@ -60,6 +68,7 @@ impl Display for NilTree {
 
                 s.fmt(f)
             }
+            NilTree::Num(n) => num_to_nils(*n).fmt(f),
         }
     }
 }

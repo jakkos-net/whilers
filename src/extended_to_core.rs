@@ -30,7 +30,7 @@ pub fn num_to_core(n: usize) -> Expression {
     res
 }
 
-pub fn num_to_niltree(n: usize) -> NilTree {
+pub fn num_to_nils(n: usize) -> NilTree {
     if n == 0 {
         NilTree::Nil
     } else {

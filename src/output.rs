@@ -116,6 +116,7 @@ pub fn parse_num(tree: &NilTree) -> anyhow::Result<usize> {
                 bail!("NaN")
             }
         }
+        NilTree::Num(n) => *n,
     })
 }
 
