@@ -116,6 +116,7 @@ pub fn parse_num(tree: &NilTree) -> anyhow::Result<usize> {
                 bail!("NaN")
             }
         }
+        NilTree::Num(n) => *n,
     })
 }
 
@@ -147,7 +148,7 @@ pub fn num_to_num_or_atom_str(n: usize) -> String {
 pub fn format_list_f(tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
     let mut res = vec![];
     if let NilTree::List(v) = tree {
-        v.into_iter().rev().for_each(|nt| res.push(f(&nt)))
+        v.iter().rev().for_each(|nt| res.push(f(&nt)))
     }
     format!("[{}]", res.join(","))
 }

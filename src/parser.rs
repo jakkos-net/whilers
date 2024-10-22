@@ -20,7 +20,6 @@ use regex::Regex;
 
 use crate::{
     atoms::Atom,
-    extended_to_core::num_to_core,
     lang::{Block, Expression, Prog, ProgName, Statement},
     variables::VarName,
 };
@@ -266,8 +265,8 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
         }),
         map(tag("false"), |_| Expression::Nil),
         map(var_name, Expression::Var),
-        atom_expr,
         tree_literal_expr,
+        atom_expr,
     ))(s)
 }
 
@@ -324,7 +323,7 @@ fn brackets_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
 
 fn atom_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map_res(preceded(tag("@"), alt((alpha1, tag(":=")))), |atom| {
-        Atom::from_str(format!("@{atom}").as_str()).map(|atom| num_to_core(atom as u8 as usize))
+        Atom::from_str(format!("@{atom}").as_str()).map(|atom| Expression::Num(atom as usize))
     })(s)
 }
 

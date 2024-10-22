@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use regex::Regex;
 
 use crate::{
-    extended_to_core::{list_to_cons, num_to_niltree, prog_to_core, switch_to_ifs},
+    extended_to_core::{list_to_cons, prog_to_core, switch_to_ifs},
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::{cons, NilTree},
     parser::expression,
@@ -23,8 +23,10 @@ pub fn interpret(
     progs: &IndexMap<ProgName, Prog>,
 ) -> anyhow::Result<(NilTree, ExecState)> {
     let mut state = ExecState::new(&main_prog.prog_name);
-    interpret_with_state(main_prog, input, progs, &mut state)?;
-    Ok((state.get(&main_prog.output_var).clone(), state))
+    match interpret_with_state(main_prog, input, progs, &mut state) {
+        Ok(_) => Ok((state.get(&main_prog.output_var).clone(), state)),
+        Err(err) => Err(err),
+    }
 }
 
 fn interpret_with_state(
@@ -43,7 +45,7 @@ fn exec_block(
     state: &mut ExecState,
     progs: &IndexMap<ProgName, Prog>,
 ) -> anyhow::Result<()> {
-    state.step()?;
+    // state.step()?;
     for stmt in &block.0 {
         exec(stmt, state, progs)?
     }
@@ -59,16 +61,14 @@ fn exec(
     match stmt {
         Statement::Assign(var, expr) => state.set(var, &eval(expr, state)),
         Statement::While { cond, body } => {
-            while eval(cond, state) != NilTree::Nil {
+            while eval(cond, state).as_bool() {
                 exec_block(body, state, progs)?
             }
         }
         Statement::If { cond, then, or } => {
             let cond = eval(cond, state);
-            match cond {
-                NilTree::Nil => exec_block(or, state, progs)?,
-                _ => exec_block(then, state, progs)?,
-            };
+            let block = if cond.as_bool() { then } else { or };
+            exec_block(block, state, progs)?
         }
         Statement::Macro {
             var,
@@ -102,18 +102,21 @@ fn exec(
 fn eval(expr: &Expression, store: &ExecState) -> NilTree {
     use Expression as E;
     match expr {
-        E::Cons(e1, e2) => cons(eval(e1, store).into(), eval(e2, store).into()),
+        E::Cons(e1, e2) => cons(&eval(e1, store), &eval(e2, store)),
         E::Hd(e) => eval(e, store).hd(),
         E::Tl(e) => eval(e, store).tl(),
         E::Nil => NilTree::Nil,
         E::Var(var) => store.get(var).clone(),
-        E::Num(n) => num_to_niltree(*n),
+        E::Num(n) => NilTree::Num(*n),
         E::Bool(b) => match b {
-            true => cons(NilTree::Nil, NilTree::Nil),
+            true => NilTree::Num(1),
             false => NilTree::Nil,
         },
         E::List(v) => eval(&list_to_cons(&v[..]), store),
-        E::Eq(a, b) => eval(&E::Bool(eval(a, store) == eval(b, store)), store),
+        E::Eq(a, b) => match eval(a, store) == eval(b, store) {
+            true => NilTree::Num(1),
+            false => NilTree::Nil,
+        },
     }
 }
 

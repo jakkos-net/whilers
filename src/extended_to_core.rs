@@ -34,7 +34,7 @@ pub fn num_to_niltree(n: usize) -> NilTree {
     if n == 0 {
         NilTree::Nil
     } else {
-        NilTree::List(vec![NilTree::Nil; n])
+        NilTree::list(vec![NilTree::Nil; n])
     }
 }
 
