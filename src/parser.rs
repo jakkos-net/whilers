@@ -239,16 +239,26 @@ fn macro_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
 // So we break up the expression into expression and not_equals_expression
 // and define equals as EXPR -> NOT_EQUALS_EXPR = EXPR
 pub fn expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    alt((equality_expr, non_equality_expression))(s)
+    // we know that we need an expression
+    let (s, expr) = non_equality_expression(s)?;
+
+    // now check if after that expr we have an "=" and then another expr
+    if let Ok((s, other_expr)) =
+        preceded(tuple((multispace0, tag("="), multispace0)), expression)(s)
+    {
+        Ok((s, Expression::Eq(Box::new(expr), Box::new(other_expr))))
+    } else {
+        Ok((s, expr))
+    }
 }
 
 pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     alt((
+        brackets_expr,
         hd_expr,
         tl_expr,
         cons_expr,
         num_expr,
-        brackets_expr,
         list_expr,
         map(tag("nil"), |_| Expression::Nil),
         map(tag("true"), |_| {
@@ -259,17 +269,6 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
         atom_expr,
         tree_literal_expr,
     ))(s)
-}
-
-fn equality_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    map(
-        separated_pair(
-            non_equality_expression,
-            delimited(multispace0, tag("="), multispace0),
-            expression,
-        ),
-        |(e1, e2)| Expression::Eq(Box::new(e1), Box::new(e2)),
-    )(s)
 }
 
 fn hd_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
@@ -492,6 +491,13 @@ mod tests {
                 output_var: VarName("Y".into())
             }
         )
+    }
+
+    // we had a problem with lots of brackets leading to very slow parsing
+    #[test]
+    fn test_brackets() {
+        let s = include_str!("../programs/brackets.while");
+        let _ = parse(s).unwrap();
     }
 
     #[test]
