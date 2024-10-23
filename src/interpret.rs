@@ -15,7 +15,7 @@ use crate::{
     variables::VarName,
 };
 
-const MAX_EXEC_STEPS: u32 = 1_000_000;
+const MAX_EXEC_STEPS: u32 = 10_000_000;
 
 pub fn interpret(
     main_prog: &Prog,
