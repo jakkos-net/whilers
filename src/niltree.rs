@@ -67,17 +67,20 @@ impl NilTree {
 }
 
 pub fn cons(a: &NilTree, b: &NilTree) -> NilTree {
-    match b {
-        NilTree::Nil => NilTree::list(vec![a.clone()]),
-        NilTree::List(v) => {
+    match (a, b) {
+        (NilTree::Nil, NilTree::Nil) => NilTree::Num(1),
+        (a, NilTree::List(v)) => {
             let mut v = (**v).clone();
             v.push(a.clone());
             NilTree::list(v)
         }
-        NilTree::Num(b) => {
-            let b = &num_to_niltree(*b);
-            cons(a, b)
+        (NilTree::Nil, NilTree::Num(n)) => NilTree::Num(n + 1),
+        (a, NilTree::Num(n)) => {
+            let mut v = vec![NilTree::Nil; n + 1];
+            v[*n] = a.clone();
+            NilTree::list(v)
         }
+        (a, NilTree::Nil) => NilTree::list(vec![a.clone()]),
     }
 }
 
