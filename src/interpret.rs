@@ -205,7 +205,7 @@ fn replace_progs_as_data(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::R
         let prog_name = ProgName(captures.get(1).unwrap().as_str().to_string());
         let prog = progs
             .get(&prog_name)
-            .with_context(|| "`{prog_name}` in input, but that program does not exist!")?;
+            .with_context(|| format!("`{prog_name}` in input, but that program does not exist!"))?;
         let core_prog = prog_to_core(&prog, progs)?;
         let prog_as_data = unparse_prog(&core_prog);
 
