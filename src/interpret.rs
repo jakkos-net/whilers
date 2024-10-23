@@ -45,7 +45,7 @@ fn exec_block(
     state: &mut ExecState,
     progs: &IndexMap<ProgName, Prog>,
 ) -> anyhow::Result<()> {
-    // state.step()?;
+    state.step()?;
     for stmt in &block.0 {
         exec(stmt, state, progs)?
     }
