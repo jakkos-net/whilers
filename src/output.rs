@@ -26,7 +26,7 @@ pub enum OutputFormat {
     CoreWhile,
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Output {
     Text(String),
     Error(String),
@@ -149,6 +149,8 @@ pub fn format_list_f(tree: &NilTree, f: impl Fn(&NilTree) -> String) -> String {
     let mut res = vec![];
     if let NilTree::List(v) = tree {
         v.iter().rev().for_each(|nt| res.push(f(&nt)))
+    } else if let NilTree::Num(n) = tree {
+        (0..*n).for_each(|_| res.push(f(&NilTree::Nil)))
     }
     format!("[{}]", res.join(","))
 }
