@@ -120,6 +120,7 @@ fn eval(expr: &Expression, store: &ExecState) -> NilTree {
     }
 }
 
+#[derive(Debug)]
 pub struct ExecState {
     macro_stack: IndexMap<ProgName, HashMap<VarName, NilTree>>,
     change_history: Vec<(ProgName, VarName, NilTree)>,
