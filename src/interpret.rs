@@ -305,4 +305,38 @@ mod tests {
             eval(&expression("137").unwrap().1, &empty_store)
         );
     }
+
+    #[test]
+    fn test_equalg() {
+        let s = include_str!("../programs/equalG.while");
+        let prog = parse(s).unwrap();
+        let progs = Default::default();
+
+        let empty_store = ExecState::new(&ProgName("testing".into()));
+
+        assert_eq!(
+            interpret(&prog, &input("[[5,5]]", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
+            eval(&expression("true").unwrap().1, &empty_store),
+        );
+        assert_eq!(
+            interpret(&prog, &input("[[5,4]]", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
+            eval(&expression("false").unwrap().1, &empty_store),
+        );
+        assert_eq!(
+            interpret(&prog, &input("[[[5,4],[5,4]]]", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
+            eval(&expression("true").unwrap().1, &empty_store),
+        );
+        assert_eq!(
+            interpret(&prog, &input("[[[5,4],[5,4,1]]]", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
+            eval(&expression("false").unwrap().1, &empty_store),
+        );
+    }
 }
