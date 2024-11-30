@@ -77,11 +77,16 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 ui.add_space(spacing);
                 output_ui(ui, state);
 
+                ui.add_space(spacing);
                 if ui.small_button("Reset application").clicked() {
                     *state = EditorState::default();
                     ctx.memory_mut(|m| *m = Default::default());
                     ctx.set_style(style());
                 }
+
+                ui.add_space(spacing);
+
+                build_info(ui);
             });
     });
 }
@@ -325,4 +330,14 @@ pub fn style() -> Style {
         visuals: Visuals::light(),
         ..Default::default()
     }
+}
+
+pub fn build_info(ui: &mut Ui) {
+    let s = format!(
+        "{}.{}.{}",
+        env!("VERGEN_GIT_COMMIT_DATE"),
+        env!("VERGEN_GIT_BRANCH"),
+        env!("VERGEN_GIT_SHA"),
+    );
+    ui.label(RichText::new(s).weak());
 }

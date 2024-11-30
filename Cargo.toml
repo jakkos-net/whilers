@@ -54,3 +54,6 @@ inherits = "dev"
 debug = 1
 opt-level = 3
 incremental = true
+
+[build-dependencies]
+vergen-gitcl = { version = "1.0.2"}
