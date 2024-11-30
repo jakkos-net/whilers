@@ -136,7 +136,7 @@ fn while_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     map(
         preceded(
             tag("while"),
-            pair(delimited(multispace1, expression, multispace1), block),
+            pair(delimited(multispace1, expression, multispace0), block),
         ),
         |(cond, body)| Statement::While { cond, body },
     )(s)
@@ -147,7 +147,7 @@ fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
         preceded(
             tag("if"),
             tuple((
-                delimited(multispace1, expression, multispace1),
+                delimited(multispace1, expression, multispace0),
                 block,
                 opt(preceded(
                     delimited(multispace0, tag("else"), multispace0),
