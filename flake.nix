@@ -11,7 +11,6 @@
   outputs = { self, nixpkgs, flake-utils, rust-overlay}:
     let overlays = [
         (import rust-overlay)
-        (self: super: {rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;})
       ];
     in
     flake-utils.lib.eachDefaultSystem (system:
@@ -22,7 +21,10 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            rustToolchain
+            (rust-bin.stable."1.74.0".default.override {
+              extensions = [ "rust-src" "rust-analyzer" ];
+              targets = [ "wasm32-unknown-unknown" ];
+            })
             just
             bacon
             gcc
