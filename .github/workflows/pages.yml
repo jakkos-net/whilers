@@ -40,3 +40,10 @@ jobs:
           # this option will not maintain any history of your previous pages deployment
           # set to false if you want all page build to be committed to your gh-pages branch history
           single-commit: true
+      - name: Build artifact
+        run: ./trunk build --release
+      - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                name: dist
+                path: dist
