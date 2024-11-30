@@ -2973,6 +2973,7 @@ dependencies = [
  "serde",
  "syntect",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

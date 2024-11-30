@@ -77,7 +77,7 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 ui.add_space(spacing);
                 output_ui(ui, state);
 
-                if ui.small_button("Reset").clicked() {
+                if ui.small_button("Reset application").clicked() {
                     *state = EditorState::default();
                     ctx.memory_mut(|m| *m = Default::default());
                     ctx.set_style(style());
@@ -153,6 +153,10 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
                         if ui.button(name).clicked() {
                             state.active_tab_id = id;
                         }
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    if ui.small_button("💾").clicked() {
+                        crate::web::save_file(&tab.code, &format!("{}.while", &tab.title));
                     }
                     if ui.button("X").clicked() {
                         to_remove = Some(id);

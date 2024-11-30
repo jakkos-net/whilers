@@ -14,3 +14,5 @@ pub mod lang;
 pub mod output;
 pub mod parser;
 pub mod utils;
+#[cfg(target_arch = "wasm32")]
+pub mod web;
