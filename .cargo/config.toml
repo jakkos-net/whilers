@@ -5,7 +5,7 @@
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg=web_sys_unstable_apis"]
 
-# use when editting wasm-only code so that the language server picks it up
 [build]
-target = "wasm32-unknown-unknown"
+# use when editting wasm-only code so that the language server picks it up
+# target = "wasm32-unknown-unknown"
 
