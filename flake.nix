@@ -21,7 +21,7 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            (rust-bin.stable."1.74.0".default.override {
+            (rust-bin.stable."1.78.0".default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
               targets = [ "wasm32-unknown-unknown" ];
             })
