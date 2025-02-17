@@ -13,8 +13,9 @@
   
        
    (c) 2018-23 Bernhard Reus 
-*)
 
+	Modified: replaced list syntax to make it Core While
+*)
 
 equalG read L {
  res := true; // initialise res to true - set false when non-equal pair of trees encountered
@@ -25,7 +26,7 @@ equalG read L {
   t := hd tl X;
   if s {
     if t { // both are not nil so continue
-          L := cons [hd s, hd t] cons [tl s, tl t] tl L
+          L := cons (cons hd s cons hd t nil) cons (cons tl s cons tl t nil) tl L
          } 
     else  //  s not nil but t is
          { res := nil;

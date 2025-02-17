@@ -77,3 +77,18 @@ pub fn unparse_expr(expr: &Expression, vars: &Variables) -> anyhow::Result<Strin
         }
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::unparse_prog;
+    use crate::parser::parse;
+
+    #[test]
+    fn test_unparse_simple_eq() {
+        let s = include_str!("../programs/simple_eq.while");
+        let prog = parse(s).unwrap();
+        let progs = Default::default();
+        // just make sure it doesn't error out
+        unparse_prog(&prog, &progs).unwrap();
+    }
+}
