@@ -14,7 +14,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let dir = std::fs::read_dir("./").unwrap();
+    let dir = std::fs::read_dir("./").expect("Current directory should be accessible");
     let mut progs: IndexMap<ProgName, Prog> = Default::default();
     for file in dir {
         let Ok(file) = file else {
@@ -25,16 +25,18 @@ fn main() {
             continue;
         }
 
-        let src = std::fs::read_to_string(file.path()).unwrap();
+        let src = std::fs::read_to_string(file.path())
+            .expect(".while files in the current directory should be readable");
 
-        let prog = whilers::parser::parse(&src).unwrap();
+        let prog = whilers::parser::parse(&src)
+            .expect(".while files in the current directory should be valid");
 
         progs.insert(prog.prog_name.clone(), prog);
     }
 
     let prog = progs
         .get(&ProgName(args.input_prog))
-        .expect("input program name should ");
+        .expect("Specified program should exist in the current directory");
 
     let output = generate_output(
         prog,
@@ -50,10 +52,9 @@ fn main() {
         }
         whilers::output::Output::Error(e) => {
             println!("{e}");
-            panic!()
         }
         whilers::output::Output::None => {
-            panic!("Output should never be None?");
+            panic!("Output should never be None, please report this as a bug!");
         }
     }
 }

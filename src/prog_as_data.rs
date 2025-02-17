@@ -1,72 +1,79 @@
+use anyhow::bail;
+use indexmap::IndexMap;
+
 use crate::{
-    lang::{Block, Expression, Prog, Statement},
+    extended_to_core::prog_to_core,
+    lang::{Block, Expression, Prog, ProgName, Statement},
     utils::indent,
     variables::Variables,
 };
 
-// this will panic if given an extended while program!
-// TODO: make this return a result
-pub fn unparse_core_prog(prog: &Prog) -> String {
-    let vars = Variables::new(prog);
-    format!(
-        "[{}, {}, {}]",
-        vars.get(&prog.input_var),
-        unparse_block(&prog.body, &vars),
-        vars.get(&prog.output_var)
-    )
+pub fn unparse_prog(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<String> {
+    let core_prog = prog_to_core(prog, progs)?;
+    unparse_core_prog(&core_prog)
 }
 
-pub fn unparse_block(block: &Block, vars: &Variables) -> String {
+pub fn unparse_core_prog(prog: &Prog) -> anyhow::Result<String> {
+    let vars = Variables::new(prog);
+    Ok(format!(
+        "[{}, {}, {}]",
+        vars.get(&prog.input_var),
+        unparse_block(&prog.body, &vars)?,
+        vars.get(&prog.output_var)
+    ))
+}
+
+pub fn unparse_block(block: &Block, vars: &Variables) -> anyhow::Result<String> {
     if block.0.is_empty() {
-        return "[]".into();
+        return Ok("[]".into());
     }
-    format!(
+    Ok(format!(
         "[\n{}\n]",
         block
             .0
             .iter()
-            .map(|stmt| indent(unparse_stmt(stmt, vars).as_str()))
-            .collect::<Vec<_>>()
+            .map(|stmt| unparse_stmt(stmt, vars).map(|s| indent(&s)))
+            .collect::<Result<Vec<_>, _>>()?
             .join(",\n")
-    )
+    ))
 }
 
-pub fn unparse_stmt(stmt: &Statement, vars: &Variables) -> String {
-    format!(
+pub fn unparse_stmt(stmt: &Statement, vars: &Variables) -> anyhow::Result<String> {
+    Ok(format!(
         "[{}]",
         match stmt {
             Statement::Assign(var, expr) =>
-                format!("@:=, {}, {}", vars.get(var), unparse_expr(expr, vars)),
+                format!("@:=, {}, {}", vars.get(var), unparse_expr(expr, vars)?),
             Statement::While { cond, body } => format!(
                 "@while, {}, {}",
-                unparse_expr(cond, vars),
-                unparse_block(body, vars)
+                unparse_expr(cond, vars)?,
+                unparse_block(body, vars)?
             ),
             Statement::If { cond, then, or } => format!(
                 "@if, {}, {}, {}",
-                unparse_expr(cond, vars),
-                unparse_block(then, vars),
-                unparse_block(or, vars)
+                unparse_expr(cond, vars)?,
+                unparse_block(then, vars)?,
+                unparse_block(or, vars)?
             ),
-            _ => panic!("Cannot unparse extended While statment: {stmt}"),
+            _ => bail!("Cannot unparse extended While statment: {stmt}"),
         }
-    )
+    ))
 }
 
-pub fn unparse_expr(expr: &Expression, vars: &Variables) -> String {
-    format!(
+pub fn unparse_expr(expr: &Expression, vars: &Variables) -> anyhow::Result<String> {
+    Ok(format!(
         "[{}]",
         match expr {
             Expression::Cons(e1, e2) => format!(
                 "@cons, {}, {}",
-                unparse_expr(e1, vars),
-                unparse_expr(e2, vars)
+                unparse_expr(e1, vars)?,
+                unparse_expr(e2, vars)?
             ),
-            Expression::Hd(e) => format!("@hd, {}", unparse_expr(e, vars)),
-            Expression::Tl(e) => format!("@tl, {}", unparse_expr(e, vars)),
+            Expression::Hd(e) => format!("@hd, {}", unparse_expr(e, vars)?),
+            Expression::Tl(e) => format!("@tl, {}", unparse_expr(e, vars)?),
             Expression::Nil => "@quote, nil".into(),
             Expression::Var(var) => format!("@var, {}", vars.get(var)),
-            _ => panic!("Cannot unparse extended While expression: {expr} "),
+            _ => bail!("Cannot unparse extended While expression: {expr} "),
         }
-    )
+    ))
 }

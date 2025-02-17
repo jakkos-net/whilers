@@ -346,7 +346,8 @@ fn replace_var(
 const EQUALG_PROGRAM: Lazy<IndexMap<ProgName, Prog>> = Lazy::new(|| {
     [(
         ProgName("equalG".into()),
-        parse(include_str!("../programs/equalG.while")).unwrap(),
+        parse(include_str!("../programs/equalG.while"))
+            .expect("equalG.while should be a valid while program and should be covered by tests"),
     )]
     .into()
 });
