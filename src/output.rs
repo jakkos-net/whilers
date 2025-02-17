@@ -12,7 +12,7 @@ use crate::{
     interpret::{interpret, ExecState},
     lang::{Prog, ProgName},
     niltree::NilTree,
-    prog_as_data::unparse_prog,
+    prog_as_data::unparse_core_prog,
 };
 
 #[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize, Copy)]
@@ -76,7 +76,7 @@ pub fn generate_output(
                 generate_output_with_debug(&output_tree, &store, debug, format_nest_list_atoms)
             }
             OutputFormat::ProgramAsData => match prog_to_core(main_prog, progs) {
-                Ok(prog) => Output::Text(unparse_prog(&prog)),
+                Ok(prog) => Output::Text(unparse_core_prog(&prog)),
                 Err(e) => Output::Error(e.to_string()),
             },
             OutputFormat::CoreWhile => match prog_to_core(main_prog, progs) {

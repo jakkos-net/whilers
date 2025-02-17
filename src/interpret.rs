@@ -11,7 +11,7 @@ use crate::{
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::{cons, NilTree},
     parser::expression,
-    prog_as_data::unparse_prog,
+    prog_as_data::unparse_core_prog,
     variables::VarName,
 };
 
@@ -208,7 +208,7 @@ fn replace_progs_as_data(s: &str, progs: &IndexMap<ProgName, Prog>) -> anyhow::R
             .get(&prog_name)
             .with_context(|| format!("`{prog_name}` in input, but that program does not exist!"))?;
         let core_prog = prog_to_core(&prog, progs)?;
-        let prog_as_data = unparse_prog(&core_prog);
+        let prog_as_data = unparse_core_prog(&core_prog);
 
         s = s.replace(backticked_prog_name, &prog_as_data);
     }

@@ -4,7 +4,9 @@ use crate::{
     variables::Variables,
 };
 
-pub fn unparse_prog(prog: &Prog) -> String {
+// this will panic if given an extended while program!
+// TODO: make this return a result
+pub fn unparse_core_prog(prog: &Prog) -> String {
     let vars = Variables::new(prog);
     format!(
         "[{}, {}, {}]",
