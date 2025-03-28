@@ -25,21 +25,35 @@ fn main() {
             continue;
         }
 
-        let src = std::fs::read_to_string(file.path())
-            .expect(".while files in the current directory should be readable");
+        let Ok(src) = std::fs::read_to_string(file.path()) else {
+            continue;
+        };
 
-        let prog = whilers::parser::parse(&src)
-            .expect(".while files in the current directory should be valid");
+        let Ok(prog) = whilers::parser::parse(&src) else {
+            continue;
+        };
 
         progs.insert(prog.prog_name.clone(), prog);
     }
 
-    let prog = progs
-        .get(&ProgName(args.input_prog))
-        .expect("Specified program should exist in the current directory");
+    // we have to print and return rather than panic-ing because the automarker
+    let prog_src = match std::fs::read_to_string(args.input_prog) {
+        Ok(src) => src,
+        Err(e) => {
+            println!("{e}");
+            return;
+        }
+    };
+    let prog = match whilers::parser::parse(&prog_src) {
+        Ok(prog) => prog,
+        Err(e) => {
+            println!("{e}");
+            return;
+        }
+    };
 
     let output = generate_output(
-        prog,
+        &prog,
         &input(&args.input_expr, &progs).unwrap(),
         &progs,
         &OutputFormat::NestedListOfAtoms,
@@ -54,7 +68,7 @@ fn main() {
             println!("{e}");
         }
         whilers::output::Output::None => {
-            panic!("Output should never be None, please report this as a bug!");
+            println!("Output should never be None, please report this as a bug!");
         }
     }
 }
