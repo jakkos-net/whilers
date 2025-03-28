@@ -338,4 +338,21 @@ mod tests {
             eval(&expression("false").unwrap().1, &empty_store),
         );
     }
+    #[test]
+    fn test_missing_macro() {
+        let s = include_str!("../programs/mult.while");
+        let prog = parse(s).unwrap();
+        let progs = Default::default();
+        // this should error as mult macro calls add but add isn't available
+        assert!(interpret(&prog, &input("[3,4]", &progs).unwrap(), &progs).is_err());
+    }
+    #[test]
+    fn test_missing_macro_not_called() {
+        let s = include_str!("../programs/mult.while");
+        let prog = parse(s).unwrap();
+        let progs = Default::default();
+        // this should error as mult macro calls add but add isn't available
+        // different to above test because here we never call the macro as the while loop body never runs
+        assert!(interpret(&prog, &input("[0,0]", &progs).unwrap(), &progs).is_err());
+    }
 }

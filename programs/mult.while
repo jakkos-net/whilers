@@ -1,0 +1,25 @@
+(* mult.while
+
+  Multiply two numbers given as list [n,m] where n and m
+  are encoded as usual as nil^i
+
+  Exploit the fact that
+              X*Y = Y+Y+..+Y       (X-times)
+	 
+    and 0-times Y is 0.
+       
+
+   (c) 2008-16 Bernhard Reus 
+
+*)
+
+mult read XY {
+	X:= hd XY;
+	Y:= hd tl XY;
+	Res:= 0;
+	while X {
+	   Res:= <add> [ Y, Res ];
+	   X:= tl X
+        }
+	}
+write Res
