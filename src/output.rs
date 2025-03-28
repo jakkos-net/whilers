@@ -56,6 +56,21 @@ pub fn generate_output(
     format: &OutputFormat,
     debug: bool,
 ) -> Output {
+    match format {
+        OutputFormat::ProgramAsData => {
+            return match unparse_prog(main_prog, progs) {
+                Ok(prog_as_data) => Output::Text(prog_as_data),
+                Err(e) => Output::Error(e.to_string()),
+            };
+        }
+        OutputFormat::CoreWhile => {
+            return match prog_to_core(main_prog, progs) {
+                Ok(prog) => Output::Text(prog.to_string()),
+                Err(e) => Output::Error(e.to_string()),
+            };
+        }
+        _ => (),
+    };
     let res = interpret(main_prog, input, progs);
 
     match res {
@@ -75,14 +90,7 @@ pub fn generate_output(
             OutputFormat::NestedListOfAtoms => {
                 generate_output_with_debug(&output_tree, &store, debug, format_nest_list_atoms)
             }
-            OutputFormat::ProgramAsData => match unparse_prog(main_prog, progs) {
-                Ok(prog_as_data) => Output::Text(prog_as_data),
-                Err(e) => Output::Error(e.to_string()),
-            },
-            OutputFormat::CoreWhile => match prog_to_core(main_prog, progs) {
-                Ok(prog) => Output::Text(prog.to_string()),
-                Err(e) => Output::Error(e.to_string()),
-            },
+            _ => panic!("other formats should be caught above!"),
         },
         Err(e) => Output::Error(format!("Program failed to run!\n{e}")),
     }
