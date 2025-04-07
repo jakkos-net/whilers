@@ -6,10 +6,7 @@ use anyhow::bail;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::{
-        complete::multispace0,
-        complete::{alpha1, alphanumeric1, digit1, multispace1},
-    },
+    character::complete::{alpha1, alphanumeric1, digit1, multispace0, multispace1},
     combinator::{eof, map, map_res, opt, recognize},
     error::{convert_error, VerboseError},
     multi::{many0_count, separated_list0},
@@ -101,14 +98,12 @@ pub fn var_name(s: &str) -> IResult<&str, VarName, VerboseError<&str>> {
 }
 
 pub fn block(s: &str) -> IResult<&str, Block, VerboseError<&str>> {
-    map(
-        delimited(
-            delimited(multispace0, tag("{"), multispace0),
-            statement_list,
-            preceded(multispace0, tag("}")),
-        ),
-        Block,
-    )(s)
+    let (s, _) = tag("{")(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, stmt_list) = statement_list(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, _) = tag("}")(s)?;
+    Ok((s, Block(stmt_list)))
 }
 
 pub fn statement_list(s: &str) -> IResult<&str, Vec<Statement>, VerboseError<&str>> {
