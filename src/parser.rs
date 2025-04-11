@@ -8,10 +8,10 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, digit1, multispace0, multispace1},
     combinator::{eof, map, map_res, opt, recognize},
-    error::{convert_error, VerboseError},
+    error::{convert_error, ContextError, VerboseError, VerboseErrorKind},
     multi::{many0_count, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
-    IResult,
+    IResult, Parser,
 };
 use regex::Regex;
 
@@ -108,7 +108,14 @@ pub fn block(s: &str) -> IResult<&str, Block, VerboseError<&str>> {
 
 pub fn statement_list(s: &str) -> IResult<&str, Vec<Statement>, VerboseError<&str>> {
     separated_list0(
-        delimited(multispace0, tag(";"), multispace0),
+        delimited(
+            multispace0,
+            alt((
+                tag(";"),
+                mistake("Are you missing a semicolon?", statement).map(|_| ""),
+            )),
+            multispace0,
+        ),
         preceded(multispace0, statement),
     )(s)
 }
@@ -159,28 +166,26 @@ fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
 }
 
 fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
-    map(
-        preceded(
-            tag("switch"),
-            tuple((
-                // the condition
-                delimited(multispace1, expression, multispace0),
-                delimited(
-                    pair(tag("{"), multispace0),
-                    switch_case_list,
-                    pair(multispace0, tag("}")),
-                ),
-            )),
-        ),
-        |(cond, (cases, default))| Statement::Switch {
-            cond,
-            cases: cases
-                .into_iter()
-                .map(|(expr, stmts)| (expr, Block(stmts)))
-                .collect::<Vec<_>>(),
-            default: default.map(Block).unwrap_or(Block(vec![])),
-        },
-    )(s)
+    let (s, _) = tag("switch")(s)?;
+    let (s, _) = multispace1(s)?;
+    let (s, cond) = expression(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, _) = tag("{")(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, (cases, default)) = switch_case_list(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, _) = cc("Expected valid case or '}'", tag("}"))(s)?;
+    let cases = cases
+        .into_iter()
+        .map(|(expr, stmts)| (expr, Block(stmts)))
+        .collect();
+    let default = Block(default.unwrap_or_default());
+    let switch = Statement::Switch {
+        cond,
+        cases,
+        default,
+    };
+    Ok((s, switch))
 }
 
 fn switch_case_list(
@@ -199,14 +204,14 @@ fn switch_case_list(
 }
 
 fn switch_case(s: &str) -> IResult<&str, (Expression, Vec<Statement>), VerboseError<&str>> {
-    pair(
-        delimited(
-            tag("case"),
-            delimited(multispace1, expression, multispace0),
-            tag(":"),
-        ),
-        statement_list,
-    )(s)
+    let (s, _) = tag("case")(s)?;
+    let (s, _) = multispace1(s)?;
+    let (s, expr) = cc("Expected valid expression", expression)(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, _) = tag(":")(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, stmts) = statement_list(s)?;
+    Ok((s, (expr, stmts)))
 }
 
 fn macro_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
@@ -336,6 +341,44 @@ fn tree_literal_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
             |(_, l, _, r, _)| Expression::Cons(Box::new(l), Box::new(r)),
         ),
     ))(s)
+}
+
+// context cut
+// makes a parser immediately throw a given error message if it fails
+// useful if we know that something must come next, e.g. if we saw "x := " we know there must be an expression next
+pub fn cc<I: Clone, E: ContextError<I>, F, O>(
+    msg: &'static str,
+    mut f: F,
+) -> impl FnMut(I) -> IResult<I, O, E>
+where
+    F: nom::Parser<I, O, E>,
+{
+    use nom::Err;
+    move |i: I| match f.parse(i.clone()) {
+        Ok(o) => Ok(o),
+        Err(Err::Incomplete(i)) => Err(Err::Incomplete(i)),
+        Err(Err::Error(e)) | Err(Err::Failure(e)) => Err(Err::Failure(E::add_context(i, msg, e))),
+    }
+}
+
+pub fn mistake<I: Clone, F, O>(
+    msg: &'static str,
+    mut f: F,
+) -> impl FnMut(I) -> IResult<I, O, VerboseError<I>>
+where
+    F: nom::Parser<I, O, VerboseError<I>>,
+{
+    use nom::error::ErrorKind;
+    use nom::error::ParseError;
+    use nom::Err;
+    move |i: I| match f.parse(i.clone()) {
+        Ok(_) => {
+            let e = VerboseError::from_error_kind(i.clone(), ErrorKind::Fail);
+            let e = VerboseError::add_context(i, msg, e);
+            Err(Err::Failure(e))
+        }
+        err => err,
+    }
 }
 
 #[cfg(test)]
