@@ -127,7 +127,8 @@ fn import_files_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
             if let Some(bytes) = &file.bytes {
                 if let Ok(s) = String::from_utf8(bytes.to_vec()) {
                     state.tabs.push(Tab::from_code(&s));
-                    state.active_tab_id += 1;
+                    // if we make create a new tab, it gets added to the end, set it active
+                    state.active_tab_id = state.tabs.len().saturating_sub(1);
                 }
             }
         })
@@ -171,13 +172,15 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
 
                 if let Some(id_to_remove) = to_remove {
                     state.tabs.remove(id_to_remove);
-                    if state.active_tab_id > 0 {
-                        state.active_tab_id -= 1;
+                    // if we delete a tab that occurs before our active tab, our active tab is now 1 idx earlier.
+                    if id_to_remove < state.active_tab_id {
+                        state.active_tab_id = state.active_tab_id.saturating_sub(1);
                     }
                 }
                 if ui.button("+").clicked() {
                     state.tabs.push(Default::default());
-                    state.active_tab_id += 1;
+                    // if we make create a new tab, it becomes the last tab, set it active
+                    state.active_tab_id = state.tabs.len().saturating_sub(1);
                 }
             });
         });
