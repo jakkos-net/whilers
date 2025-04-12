@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use regex::Regex;
 
 use crate::{
-    extended_to_core::{list_to_cons, prog_to_core, switch_to_ifs},
+    extended_to_core::{list_to_cons, macros_to_core, prog_to_core, switch_to_ifs},
     lang::{Block, Expression, Prog, ProgName, Statement},
     niltree::{cons, NilTree},
     parser::expression,
@@ -22,6 +22,8 @@ pub fn interpret(
     input: &NilTree,
     progs: &IndexMap<ProgName, Prog>,
 ) -> anyhow::Result<(NilTree, ExecState)> {
+    // check that macros are valid, i.e. referenced programs exist and there's no recursion
+    let _ = macros_to_core(main_prog, progs)?;
     let mut state = ExecState::new(&main_prog.prog_name);
     match interpret_with_state(main_prog, input, progs, &mut state) {
         Ok(_) => Ok((state.get(&main_prog.output_var).clone(), state)),

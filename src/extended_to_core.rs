@@ -148,7 +148,7 @@ pub fn switch_to_ifs(
     recur(cond, &v[..], default.0.clone())[0].clone()
 }
 
-fn macros_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
+pub fn macros_to_core(prog: &Prog, progs: &IndexMap<ProgName, Prog>) -> anyhow::Result<Prog> {
     fn convert<'a>(block: &Block, context: &mut Context<'a>) -> anyhow::Result<Block> {
         // we only want to replace one macro at a time
         if context.made_change {
