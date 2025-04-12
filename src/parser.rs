@@ -538,6 +538,12 @@ mod tests {
     }
 
     #[test]
+    fn test_bracket_expr_no_space() {
+        let s = include_str!("../programs/bracket_expr_no_space.while");
+        let _ = parse(s).unwrap();
+    }
+
+    #[test]
     fn test_stack_overflow() {
         let n = 1_000_000;
         let n = num_to_niltree(n);
