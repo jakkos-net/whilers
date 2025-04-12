@@ -1,0 +1,6 @@
+prog read X{
+	Y := 1;
+	if tl Y = nil{
+		Y := 2
+	}
+} write Y

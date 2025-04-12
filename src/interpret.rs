@@ -221,6 +221,7 @@ mod tests {
     use crate::{
         interpret::{eval, input, ExecState},
         lang::ProgName,
+        niltree::NilTree,
         parser::{expression, parse},
     };
 
@@ -356,5 +357,17 @@ mod tests {
         // this should error as mult macro calls add but add isn't available
         // different to above test because here we never call the macro as the while loop body never runs
         assert!(interpret(&prog, &input("[0,0]", &progs).unwrap(), &progs).is_err());
+    }
+    #[test]
+    fn test_eq_precedence() {
+        let s = include_str!("../programs/eq_precedence.while");
+        let prog = parse(s).unwrap();
+        let progs = Default::default();
+        assert_eq!(
+            interpret(&prog, &input("nil", &progs).unwrap(), &progs)
+                .unwrap()
+                .0,
+            NilTree::Num(2)
+        );
     }
 }
