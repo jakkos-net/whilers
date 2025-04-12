@@ -138,7 +138,7 @@ fn while_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     map(
         preceded(
             tag("while"),
-            pair(delimited(multispace1, expression, multispace0), block),
+            separated_pair(preceded_expression, multispace0, block),
         ),
         |(cond, body)| Statement::While { cond, body },
     )(s)
@@ -149,7 +149,7 @@ fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
         preceded(
             tag("if"),
             tuple((
-                delimited(multispace1, expression, multispace0),
+                terminated(preceded_expression, multispace0),
                 block,
                 opt(preceded(
                     delimited(multispace0, tag("else"), multispace0),
@@ -165,10 +165,14 @@ fn if_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     )(s)
 }
 
+// allow `tl expr` or `tl(expr)`
+fn preceded_expression(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
+    alt((brackets_expr, preceded(multispace1, expression)))(s)
+}
+
 fn switch_stmt(s: &str) -> IResult<&str, Statement, VerboseError<&str>> {
     let (s, _) = tag("switch")(s)?;
-    let (s, _) = multispace1(s)?;
-    let (s, cond) = expression(s)?;
+    let (s, cond) = preceded_expression(s)?;
     let (s, _) = multispace0(s)?;
     let (s, _) = tag("{")(s)?;
     let (s, _) = multispace0(s)?;
@@ -271,26 +275,20 @@ pub fn non_equality_expression(s: &str) -> IResult<&str, Expression, VerboseErro
 }
 
 fn hd_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    map(preceded(pair(tag("hd"), multispace1), expression), |e| {
+    map(preceded(tag("hd"), preceded_expression), |e| {
         Expression::Hd(e.into())
     })(s)
 }
 
 fn tl_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
-    map(preceded(pair(tag("tl"), multispace1), expression), |e| {
+    map(preceded(tag("tl"), preceded_expression), |e| {
         Expression::Tl(e.into())
     })(s)
 }
 
 fn cons_expr(s: &str) -> IResult<&str, Expression, VerboseError<&str>> {
     map(
-        preceded(
-            tag("cons"),
-            pair(
-                preceded(multispace1, expression),
-                preceded(multispace1, expression),
-            ),
-        ),
+        preceded(tag("cons"), pair(preceded_expression, preceded_expression)),
         |(e1, e2)| Expression::Cons(e1.into(), e2.into()),
     )(s)
 }
@@ -538,8 +536,8 @@ mod tests {
     }
 
     #[test]
-    fn test_bracket_expr_no_space() {
-        let s = include_str!("../programs/bracket_expr_no_space.while");
+    fn test_whitespace_rules() {
+        let s = include_str!("../programs/whitespace_rules.while");
         let _ = parse(s).unwrap();
     }
 

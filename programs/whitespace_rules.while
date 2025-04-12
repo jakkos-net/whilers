@@ -1,0 +1,6 @@
+prog read X {
+	Y := tl(2);
+	Y := cons(2)(2);
+	if(2){};
+	while(2){}
+} write Y
