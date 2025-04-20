@@ -22,6 +22,7 @@ pub struct EditorState {
     output: Output,
     output_format: OutputFormat,
     debug: bool,
+    #[serde(skip)] // don't keep the ui settings open if user reloads page
     show_ui_settings: bool,
 }
 
@@ -86,7 +87,7 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                         ctx.memory_mut(|m| *m = Default::default());
                         ctx.set_style(style());
                     }
-                    if ui.small_button("Ui settings").clicked() {
+                    if ui.small_button("UI settings").clicked() {
                         state.show_ui_settings = true;
                     }
                 });
@@ -95,9 +96,11 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
 
                 build_info(ui);
 
-                Window::new("ui settings")
+                Window::new("UI settings")
                     .open(&mut state.show_ui_settings)
-                    .show(ctx, |ui| ctx.settings_ui(ui))
+                    .show(ctx, |ui| {
+                        ScrollArea::both().show(ui, |ui| ctx.settings_ui(ui))
+                    })
             });
     });
 }
