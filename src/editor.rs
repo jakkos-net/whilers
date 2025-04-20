@@ -1,6 +1,6 @@
 use egui::{
-    CentralPanel, Color32, ComboBox, Context, FontId, RichText, ScrollArea, Style, TextEdit,
-    TextStyle, Ui, Vec2, Visuals, Window,
+    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, Style, TextEdit, TextStyle, Ui,
+    Vec2, Visuals, Window,
 };
 
 use indexmap::IndexMap;
