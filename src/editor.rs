@@ -1,6 +1,6 @@
 use egui::{
     CentralPanel, Color32, ComboBox, Context, FontId, RichText, ScrollArea, Style, TextEdit,
-    TextStyle, Ui, Vec2, Visuals,
+    TextStyle, Ui, Vec2, Visuals, Window,
 };
 
 use indexmap::IndexMap;
@@ -22,6 +22,7 @@ pub struct EditorState {
     output: Output,
     output_format: OutputFormat,
     debug: bool,
+    show_ui_settings: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -59,6 +60,7 @@ impl Default for EditorState {
             output: Default::default(),
             output_format: OutputFormat::NilTree,
             debug: false,
+            show_ui_settings: false,
         }
     }
 }
@@ -78,15 +80,24 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                 output_ui(ui, state);
 
                 ui.add_space(spacing);
-                if ui.small_button("Reset application").clicked() {
-                    *state = EditorState::default();
-                    ctx.memory_mut(|m| *m = Default::default());
-                    ctx.set_style(style());
-                }
+                ui.horizontal(|ui| {
+                    if ui.small_button("Reset application").clicked() {
+                        *state = EditorState::default();
+                        ctx.memory_mut(|m| *m = Default::default());
+                        ctx.set_style(style());
+                    }
+                    if ui.small_button("Ui settings").clicked() {
+                        state.show_ui_settings = true;
+                    }
+                });
 
                 ui.add_space(spacing);
 
                 build_info(ui);
+
+                Window::new("ui settings")
+                    .open(&mut state.show_ui_settings)
+                    .show(ctx, |ui| ctx.settings_ui(ui))
             });
     });
 }
