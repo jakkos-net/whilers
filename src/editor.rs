@@ -1,6 +1,6 @@
 use egui::{
-    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, Style, TextEdit, TextStyle, Ui,
-    Visuals,
+    CentralPanel, Color32, ComboBox, Context, FontId, RichText, ScrollArea, Style, TextEdit,
+    TextStyle, Ui, Vec2, Visuals,
 };
 
 use indexmap::IndexMap;
@@ -191,21 +191,68 @@ fn code_tabs_ui(ctx: &Context, ui: &mut Ui, state: &mut EditorState) {
     }
     ui.separator();
     if let Some(tab) = state.tabs.get_mut(state.active_tab_id) {
-        ui.add(
-            TextEdit::multiline(&mut tab.code)
-                .font(TextStyle::Monospace)
-                .code_editor()
-                .desired_rows(10)
-                .lock_focus(true)
-                .desired_width(f32::INFINITY)
-                .layouter(&mut layouter()),
-        );
-
+        code_ui(ui, &mut tab.code);
         tab.update_title();
     } else {
         ui.label("Selected source code file doesn't exist!");
     }
     ui.separator();
+}
+
+fn code_ui(ui: &mut Ui, src: &mut String) {
+    let min_lines = 10;
+    let num_lines = src.split("\n").count().max(min_lines);
+    let max_num_chars = num_lines.to_string().len();
+    let font_id = ui
+        .style()
+        .text_styles
+        .get(&TextStyle::Monospace)
+        .cloned()
+        .unwrap_or_default();
+    let max_num_width = ui
+        .painter()
+        .layout(
+            format!("{num_lines}"),
+            font_id.clone(),
+            Default::default(),
+            f32::MAX,
+        )
+        .rect
+        .width();
+    let mut line_numbers_str = String::with_capacity(num_lines * max_num_chars);
+    for i in 1..=num_lines {
+        let num_str = i.to_string();
+        // add padding to right justify
+        for _ in 0..(max_num_chars - num_str.len()) {
+            line_numbers_str.push_str(" ");
+        }
+        line_numbers_str.push_str(&format!("{i}"));
+        if i < num_lines {
+            line_numbers_str.push_str("\n");
+        }
+    }
+    let margin = Vec2::new(4.0, 2.0);
+    let line_numbers = TextEdit::multiline(&mut line_numbers_str)
+        .min_size(Vec2::new(max_num_width, 0.))
+        .margin(Vec2::new(0., margin.y))
+        .desired_width(max_num_width)
+        .font(font_id.clone())
+        .desired_rows(min_lines)
+        .horizontal_align(egui::Align::Max)
+        .frame(false)
+        .interactive(false);
+    ui.horizontal(|ui| {
+        ui.add(line_numbers);
+        ui.add(
+            TextEdit::multiline(src)
+                .font(font_id.clone())
+                .lock_focus(true)
+                .margin(margin)
+                .desired_rows(min_lines)
+                .desired_width(f32::INFINITY)
+                .layouter(&mut layouter()),
+        );
+    });
 }
 
 fn run_ui(ui: &mut Ui, state: &mut EditorState) {

@@ -13,7 +13,7 @@ use nom::{
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult, Parser,
 };
-use regex::Regex;
+use regex::{Captures, Regex};
 
 use crate::{
     atoms::Atom,
@@ -75,11 +75,21 @@ pub fn get_prog_name_string_fast(s: &str) -> String {
 }
 
 pub fn remove_comments(s: &str) -> String {
-    let single_line = Regex::new(r"//.*").unwrap();
+    let single_line_re = Regex::new(r"//.*").unwrap();
+    let s = single_line_re.replace_all(s, "");
     let multi_line = Regex::new(r"\(\*(.|\n)*?\*\)").unwrap();
-    multi_line
-        .replace_all(&single_line.replace_all(s, "\n"), "")
-        .to_string()
+    // preserve newlines in comments so error message line numbers match up
+    let replace_newlines = |cap: &Captures<'_>| {
+        let matching = cap.get(0).map(|m| m.as_str()).unwrap_or_default();
+        let num_newlines = matching.match_indices("\n").count();
+        let mut s: String = Default::default();
+        for _ in 0..num_newlines {
+            s.push_str("\n")
+        }
+        s
+    };
+    let s = multi_line.replace_all(&s, replace_newlines);
+    s.to_string()
 }
 
 pub fn name(s: &str) -> IResult<&str, &str, VerboseError<&str>> {
