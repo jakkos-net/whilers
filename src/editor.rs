@@ -1,12 +1,13 @@
 use egui::{
-    CentralPanel, Color32, ComboBox, Context, RichText, ScrollArea, Style, TextEdit, TextStyle, Ui,
-    Vec2, Visuals, Window,
+    CentralPanel, Color32, ComboBox, Context, Grid, RichText, ScrollArea, Style, TextEdit,
+    TextStyle, Ui, Vec2, Visuals, Window,
 };
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    atoms::Atom,
     highlight::layouter,
     interpret::input,
     lang::{Prog, ProgName},
@@ -24,6 +25,8 @@ pub struct EditorState {
     debug: bool,
     #[serde(skip)] // don't keep the ui settings open if user reloads page
     show_ui_settings: bool,
+    #[serde(skip)] // don't keep the ui settings open if user reloads page
+    show_atoms: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -62,6 +65,7 @@ impl Default for EditorState {
             output_format: OutputFormat::NilTree,
             debug: false,
             show_ui_settings: false,
+            show_atoms: false,
         }
     }
 }
@@ -90,6 +94,9 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                     if ui.small_button("UI settings").clicked() {
                         state.show_ui_settings = true;
                     }
+                    if ui.small_button("Show atoms").clicked() {
+                        state.show_atoms = true;
+                    }
                 });
 
                 ui.add_space(spacing);
@@ -100,7 +107,11 @@ pub fn ui(ctx: &Context, state: &mut EditorState) {
                     .open(&mut state.show_ui_settings)
                     .show(ctx, |ui| {
                         ScrollArea::both().show(ui, |ui| ctx.settings_ui(ui))
-                    })
+                    });
+                Window::new("Atoms")
+                    .open(&mut state.show_atoms)
+                    .default_width(400.0)
+                    .show(ctx, |ui| atom_ui(ui));
             });
     });
 }
@@ -387,6 +398,26 @@ fn output_ui(ui: &mut Ui, state: &mut EditorState) {
         }
     }
     ui.separator();
+}
+
+fn atom_ui(ui: &mut Ui) {
+    ScrollArea::vertical().show(ui, |ui| {
+        Grid::new("outer atom grid").max_col_width(300.0).show(ui, |ui|{
+            let atom = Atom::DoWhile;
+            let value = atom as u8;
+            ui.label(format!("Atoms are hard-coded constants that make it easier to read and write 'programs-as-data' representations of code. When an atom is used in a program, it is equivalent to using the corresponding value. E.g. {atom} is encoded as the value {value}, therefore writing 'X := {atom}' will store the value {value} in variable X."));
+            Grid::new("atom grid").show(ui, |ui| {
+                ui.label(RichText::new("Atom").strong().underline());
+                ui.label(RichText::new("Value").strong().underline());
+                ui.end_row();
+                for atom in Atom::iter() {
+                    ui.label(atom.to_string());
+                    ui.label((atom as u8).to_string());
+                    ui.end_row();
+                }
+            });
+        });
+    });
 }
 
 pub fn style() -> Style {

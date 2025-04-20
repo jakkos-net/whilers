@@ -8,6 +8,7 @@ use std::{fmt::Display, str::FromStr};
 use anyhow::bail;
 
 #[repr(u8)]
+#[derive(Clone, Copy)]
 pub enum Atom {
     Assign = 2,
     DoAssign = 3,
@@ -23,6 +24,17 @@ pub enum Atom {
     DoTl = 37,
     Cons = 41,
     DoCons = 43,
+}
+
+impl Atom {
+    pub fn iter() -> impl Iterator<Item = Atom> {
+        use Atom::*;
+        [
+            Assign, DoAssign, While, DoWhile, If, DoIf, Var, Quote, Hd, DoHd, Tl, DoTl, Cons,
+            DoCons,
+        ]
+        .into_iter()
+    }
 }
 
 impl TryFrom<u8> for Atom {
@@ -56,7 +68,7 @@ impl FromStr for Atom {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use Atom::*;
         Ok(match s {
-            "@:=" | "@asng" => Assign,
+            "@:=" | "@asgn" => Assign,
             "@doAsgn" => DoAssign,
             "@while" => While,
             "@doWhile" => DoWhile,
