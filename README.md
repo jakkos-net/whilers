@@ -13,7 +13,7 @@ An online editor and interpreter for the While language from Prof. Bernhard Reus
 - [Install Rust](https://www.rust-lang.org/learn/get-started)
 - Clone the repo
 - `cargo build --release --bin whilers_cli`
-- An executable `whilers_cli` will be created in `target/release` directory
+- An executable `whilers_cli` will be created in the `target/release` directory
 
 You can then run programs with `./whilers_cli myprog.while nil`. Only "nested atoms" output is currently supported.
 
