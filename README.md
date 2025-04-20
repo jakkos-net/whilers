@@ -15,7 +15,7 @@ An online editor and interpreter for the While language from Prof. Bernhard Reus
 - `cargo build --release --bin whilers_cli`
 - An executable `whilers_cli` will be created in the `target/release` directory
 
-You can then run programs with `./whilers_cli myprog.while nil`. Only "nested atoms" output is currently supported.
+You can then run programs with `./whilers_cli myprog.while nil`. Only "nested list of atoms" output is currently supported.
 
 ### web gui
 - [Install Rust](https://www.rust-lang.org/learn/get-started)
