@@ -9,7 +9,7 @@ name = "main"
 path = "src/main.rs"
 
 [[bin]]
-name = "cli"
+name = "whilers_cli"
 path = "src/cli.rs"
 
 [dependencies]
